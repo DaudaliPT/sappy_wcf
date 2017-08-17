@@ -1,0 +1,27 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="SappyWCF_implementation.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="DBSERVER" Type="System.String" Scope="User">
+      <Value Profile="(Default)">192.168.0.7:30015</Value>
+    </Setting>
+    <Setting Name="DBUSER" Type="System.String" Scope="User">
+      <Value Profile="(Default)">SYSTEM</Value>
+    </Setting>
+    <Setting Name="DBUSERPASS" Type="System.String" Scope="User">
+      <Value Profile="(Default)">#Passw0rd#</Value>
+    </Setting>
+    <Setting Name="SAPPY001_PrinterName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Brother DCP-J315W Printer</Value>
+    </Setting>
+    <Setting Name="SAPPY_COMPANYS" Type="System.Collections.Specialized.StringCollection" Scope="User">
+      <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;string&gt;SBO_RACHIDAS&lt;/string&gt;
+&lt;/ArrayOfString&gt;</Value>
+    </Setting>
+    <Setting Name="LICENCESERVER" Type="System.String" Scope="User">
+      <Value Profile="(Default)">192.168.0.7:40000</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

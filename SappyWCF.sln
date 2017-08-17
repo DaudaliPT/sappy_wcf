@@ -1,0 +1,53 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SappyWCF_windowsService", "SappyWCF_windowsService\SappyWCF_windowsService.csproj", "{9111D467-0904-4917-AF39-F200EC875EF2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SappyWCF_debugconsole", "SappyWCF_debugconsole\SappyWCF_debugconsole.csproj", "{9E99BC69-37F4-4F8B-98FB-2414824A651D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SappyWCF_implementation", "SappyWCF_implementation\SappyWCF_implementation.csproj", "{C8A6C531-8AC1-4715-8B36-668A90E52458}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "SappyWCF_setup", "SappyWCF_setup\SappyWCF_setup.vdproj", "{C0AFA228-8097-436C-8C6A-F07194757F88}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C8A6C531-8AC1-4715-8B36-668A90E52458} = {C8A6C531-8AC1-4715-8B36-668A90E52458}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9111D467-0904-4917-AF39-F200EC875EF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9111D467-0904-4917-AF39-F200EC875EF2}.Debug|x86.ActiveCfg = Debug|x86
+		{9111D467-0904-4917-AF39-F200EC875EF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9111D467-0904-4917-AF39-F200EC875EF2}.Release|x86.ActiveCfg = Release|x86
+		{9111D467-0904-4917-AF39-F200EC875EF2}.Release|x86.Build.0 = Release|x86
+		{9E99BC69-37F4-4F8B-98FB-2414824A651D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E99BC69-37F4-4F8B-98FB-2414824A651D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E99BC69-37F4-4F8B-98FB-2414824A651D}.Debug|x86.ActiveCfg = Debug|x86
+		{9E99BC69-37F4-4F8B-98FB-2414824A651D}.Debug|x86.Build.0 = Debug|x86
+		{9E99BC69-37F4-4F8B-98FB-2414824A651D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E99BC69-37F4-4F8B-98FB-2414824A651D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E99BC69-37F4-4F8B-98FB-2414824A651D}.Release|x86.ActiveCfg = Release|x86
+		{9E99BC69-37F4-4F8B-98FB-2414824A651D}.Release|x86.Build.0 = Release|x86
+		{C8A6C531-8AC1-4715-8B36-668A90E52458}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8A6C531-8AC1-4715-8B36-668A90E52458}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8A6C531-8AC1-4715-8B36-668A90E52458}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C8A6C531-8AC1-4715-8B36-668A90E52458}.Debug|x86.Build.0 = Debug|Any CPU
+		{C8A6C531-8AC1-4715-8B36-668A90E52458}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8A6C531-8AC1-4715-8B36-668A90E52458}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8A6C531-8AC1-4715-8B36-668A90E52458}.Release|x86.ActiveCfg = Release|Any CPU
+		{C8A6C531-8AC1-4715-8B36-668A90E52458}.Release|x86.Build.0 = Release|Any CPU
+		{C0AFA228-8097-436C-8C6A-F07194757F88}.Debug|Any CPU.ActiveCfg = Debug
+		{C0AFA228-8097-436C-8C6A-F07194757F88}.Debug|x86.ActiveCfg = Debug
+		{C0AFA228-8097-436C-8C6A-F07194757F88}.Release|Any CPU.ActiveCfg = Release
+		{C0AFA228-8097-436C-8C6A-F07194757F88}.Release|Any CPU.Build.0 = Release
+		{C0AFA228-8097-436C-8C6A-F07194757F88}.Release|x86.ActiveCfg = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
