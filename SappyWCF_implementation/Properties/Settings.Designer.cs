@@ -96,5 +96,29 @@ namespace SappyWCF_implementation.Properties {
                 this["LICENCESERVER"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("dora")]
+        public string SAPB1USER {
+            get {
+                return ((string)(this["SAPB1USER"]));
+            }
+            set {
+                this["SAPB1USER"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("dadobia")]
+        public string SAPB1USERPASS {
+            get {
+                return ((string)(this["SAPB1USERPASS"]));
+            }
+            set {
+                this["SAPB1USERPASS"] = value;
+            }
+        }
     }
 }

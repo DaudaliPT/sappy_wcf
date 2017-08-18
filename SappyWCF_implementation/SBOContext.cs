@@ -19,15 +19,15 @@ class SBOContext : IDisposable
 
         this.company = new SAPbobsCOM.Company();
         this.company.DbServerType = SAPbobsCOM.BoDataServerTypes.dst_HANADB;
-        this.company.Server = SappyWCF_implementation.Properties.Settings.Default.DBSERVER;
-        this.company.LicenseServer = SappyWCF_implementation.Properties.Settings.Default.LICENCESERVER; 
-        this.company.CompanyDB = companydb;
         this.company.UseTrusted = false;
-        this.company.UserName = "dora";
-        this.company.Password = "dadobia";
         this.company.language = SAPbobsCOM.BoSuppLangs.ln_English;
+        this.company.LicenseServer = SappyWCF_implementation.Properties.Settings.Default.LICENCESERVER;
+        this.company.Server = SappyWCF_implementation.Properties.Settings.Default.DBSERVER;
         this.company.DbUserName = SappyWCF_implementation.Properties.Settings.Default.DBUSER;
         this.company.DbPassword = SappyWCF_implementation.Properties.Settings.Default.DBUSERPASS;
+        this.company.CompanyDB = companydb;
+        this.company.UserName = SappyWCF_implementation.Properties.Settings.Default.SAPB1USER;
+        this.company.Password = SappyWCF_implementation.Properties.Settings.Default.SAPB1USERPASS;
 
         Logger.Log.Debug("Connecting SAPB1 DIAPI to " + this.company.Server + ", database " + this.company.CompanyDB + "...");
         if (this.company.Connect() != 0)
@@ -58,10 +58,24 @@ class SBOContext : IDisposable
 
     internal int Confirmar_SAPPY_DOC(string objCode, int draftId)
     {
+        var sqlHeader = "SELECT T0.* ";
+        sqlHeader += "\n , OCPR.\"CntctCode\"";
+        sqlHeader += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC T0";
+        sqlHeader += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OCPR OCPR";
+        sqlHeader += "\n        ON T0.CARDCODE = OCPR.\"CardCode\"";
+        sqlHeader += "\n        ON T0.CONTACT  = OCPR.\"Name\"";
+        sqlHeader += "\n WHERE T0.ID =" + draftId;
+
+        var sqlDetail = "SELECT T1.*";
+        sqlDetail += "\n , OITM.\"InvntryUom\"";
+        sqlDetail += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
+        sqlDetail += "\n INNER JOIN \"" + this.company.CompanyDB + "\".OITM OITM on T1.ITEMCODE = OITM.\"ItemCode\"";
+        sqlDetail += "\n WHERE T1.ID =" + draftId;
+        sqlDetail += "\n ORDER BY T1.LINENUM";
 
         using (HelperOdbc dataLayer = new HelperOdbc())
-        using (DataTable headerDt = dataLayer.Execute("SELECT * FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC WHERE ID =" + draftId))
-        using (DataTable detailsDt = dataLayer.Execute("SELECT * FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES WHERE ID =" + draftId + " ORDER BY LINENUM"))
+        using (DataTable headerDt = dataLayer.Execute(sqlHeader))
+        using (DataTable detailsDt = dataLayer.Execute(sqlDetail))
         {
             DataRow header = headerDt.Rows[0];
 
@@ -69,50 +83,86 @@ class SBOContext : IDisposable
             if (objType.ToString() != objCode) throw new Exception("objCode " + objCode + " is diferent of " + objType.ToString());
 
 
-            DateTime DOCDATE = (DateTime)header["DOCDATE"];
-            DateTime DOCDUEDATE = (DateTime)header["DOCDUEDATE"];
-
             SAPbobsCOM.Documents newDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
-            newDoc.DocDate = DateTime.Now;                      // DataLancamento;
-            if (DOCDATE.Year > 1900) newDoc.TaxDate = DOCDATE;       // DataDocumento;
-            if (DOCDUEDATE.Year > 1900) newDoc.DocDueDate = DOCDUEDATE; // DataEntrega;
+
+            //Serie
+            newDoc.Series = (int)header["DOCSERIES"];
+
+            // DataDocumento;
+            DateTime DOCDATE = (DateTime)header["DOCDATE"];
+            if (DOCDATE.Year > 1900) newDoc.TaxDate = DOCDATE;
+
+            // Data vencimento/entrega;
+            DateTime DOCDUEDATE = (DateTime)header["DOCDUEDATE"];
+            if (DOCDUEDATE.Year > 1900) newDoc.DocDueDate = DOCDUEDATE;
+
+            // Informações do Parceiro
             newDoc.CardCode = (string)header["CARDCODE"];
-            newDoc.Comments = (string)header["COMMENTS"];
-            newDoc.NumAtCard = (string)header["NUMATCARD"];
+            if ((string)header["SHIPADDR"] != "") newDoc.ShipToCode = (string)header["SHIPADDR"];
+            if ((string)header["BILLADDR"] != "") newDoc.PayToCode = (string)header["BILLADDR"];
+            if ((string)header["NUMATCARD"] != "") newDoc.NumAtCard = (string)header["NUMATCARD"];
+            if ((string)header["COMMENTS"] != "") newDoc.Comments = (string)header["COMMENTS"];
+            if ((int)header["CntctCode"] != 0) newDoc.ContactPersonCode = (int)header["CntctCode"];
+
             newDoc.UserFields.Fields.Item("U_apyUSER").Value = (string)header["CREATED_BY_NAME"];
+            newDoc.UserFields.Fields.Item("U_apyINCONF").Value = (int)header["HASINCONF"] == 1 ? "Y" : "N";
 
             foreach (DataRow line in detailsDt.Rows)
             {
                 if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
 
                 newDoc.Lines.ItemCode = (string)line["ITEMCODE"];
+                newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
+
+                //Quantidades
+                newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
                 newDoc.Lines.Factor1 = (double)(decimal)line["QTCX"];   // Num caixas/pack
                 newDoc.Lines.Factor2 = (double)(decimal)line["QTPK"];   // Qdd por Caixa/pack
+
+                //Preço
                 newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
                 newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
-                
+
+                //Iva
+                newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (int)line["HASINCONF"] == 1 ? "Y" : "N";
+
 
                 var BONUS_NAP = (short)line["BONUS_NAP"];
                 if (BONUS_NAP == 1)
                 {
-                    // deixa que o SAP calcule o LineTotal na lona atual e na de Bonus
+                    // deixa que o SAP calcule o LineTotal na linha atual e na de Bonus
                     if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
 
                     newDoc.Lines.ItemCode = "BONUS";
-                    newDoc.Lines.Factor1 = -1 * (double)(decimal)line["QTCX"];   // Num caixas/pack
-                    newDoc.Lines.Factor2 = (double)(decimal)line["QTPK"];   // Qdd por Caixa/pack
+                    newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
+                    newDoc.Lines.Factor1 = -1 * (double)(decimal)line["QTCX"];      // Num caixas/pack
+                    newDoc.Lines.Factor2 = (double)(decimal)line["QTPK"];           // Qdd por Caixa/pack
                     newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
                 }
                 else
                 {
+                    // Estamos a deixar o SAP calcular o total.
+                    // fazemos isso principalmente porque isso fará o SAP calcular a percentagem de desconto e a base de imposto será seguramente a mesma, 
+                    // sem diferenças causadas por arredondamentos.
+                    // Isso pode causar % de descontos muitos pequenas e até negativas (mas sem significado nos valores)
                     newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
                 }
-
             }
+
+
+
+
+            // ARREDONDAMENTO DE TOTAL
+            if ((double)(decimal)header["ROUNDVAL"] != 0)
+            {
+                newDoc.Rounding= SAPbobsCOM.BoYesNoEnum.tYES;
+                newDoc.RoundingDiffAmount = (double)(decimal)header["ROUNDVAL"];
+            }
+
 
             try
             {
-
                 int docentry = 0;
                 this.company.StartTransaction();
 
@@ -130,10 +180,10 @@ class SBOContext : IDisposable
                 //APGAR OS REGISTOS
                 dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC WHERE ID =" + draftId);
                 dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES WHERE ID =" + draftId);
-                
+
                 if (newDoc.GetByKey(docentry))
                 {
-                    return newDoc.DocNum;    
+                    return newDoc.DocNum;
                 }
 
                 return docentry;

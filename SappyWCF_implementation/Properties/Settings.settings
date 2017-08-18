@@ -23,5 +23,11 @@
     <Setting Name="LICENCESERVER" Type="System.String" Scope="User">
       <Value Profile="(Default)">192.168.0.7:40000</Value>
     </Setting>
+    <Setting Name="SAPB1USER" Type="System.String" Scope="User">
+      <Value Profile="(Default)">dora</Value>
+    </Setting>
+    <Setting Name="SAPB1USERPASS" Type="System.String" Scope="User">
+      <Value Profile="(Default)">dadobia</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
