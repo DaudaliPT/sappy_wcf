@@ -119,20 +119,23 @@ class SBOContext : IDisposable
                 newDoc.Lines.Factor1 = (double)(decimal)line["QTCX"];   // Num caixas/pack
                 newDoc.Lines.Factor2 = (double)(decimal)line["QTPK"];   // Qdd por Caixa/pack
 
+
                 //Preço
                 newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
                 newDoc.Lines.DiscountPercent = (double)(decimal)line["DISCOUNT"];
                 newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
 
                 //Iva
-                newDoc.Lines.TaxCode = (string)line["VATGROUP"];
-                //     newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                newDoc.Lines.TaxCode = (string)line["VATGROUP"]; 
                 newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
 
 
                 var BONUS_NAP = (short)line["BONUS_NAP"];
                 if (BONUS_NAP == 1)
                 {
+                    //Preço 
+                    newDoc.Lines.DiscountPercent = 0; 
+
                     // deixa que o SAP calcule o LineTotal na linha atual e na de Bonus
                     if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
 
@@ -141,11 +144,11 @@ class SBOContext : IDisposable
                     newDoc.Lines.Factor1 = -1 * (double)(decimal)line["QTCX"];      // Num caixas/pack
                     newDoc.Lines.Factor2 = (double)(decimal)line["QTPK"];           // Qdd por Caixa/pack
                     newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
-                    newDoc.Lines.TaxCode = (string)line["VATGROUP"];
-                    // newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                    newDoc.Lines.TaxCode = (string)line["VATGROUP"]; 
                 }
                 else
                 {
+
                     // Estamos a deixar o SAP calcular o total.
                     // fazemos isso principalmente porque isso fará o SAP calcular a percentagem de desconto e a base de imposto será seguramente a mesma, 
                     // sem diferenças causadas por arredondamentos.
