@@ -87,6 +87,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AddDocResult.cs" />
     <Compile Include="Helpers\HelperCrystalReports.cs" />
     <Compile Include="Helpers\FileStream_ThatDeletesFileAfterReading.cs" />
     <Compile Include="SBOContext.cs" />

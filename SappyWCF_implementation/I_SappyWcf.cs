@@ -17,7 +17,7 @@ public class Result
 
 [ServiceContract]
 public interface I_SappyWcf
-{ 
+{
 
 
     [OperationContract]
@@ -41,8 +41,10 @@ public interface I_SappyWcf
 
     [OperationContract]
     [WebInvoke(Method = "POST",
+        RequestFormat = WebMessageFormat.Json,
         ResponseFormat = WebMessageFormat.Json,
-        UriTemplate = "{empresa}/AddDoc/{objCode}/{draftId}")]
-    string AddDoc(string empresa, string objCode, string draftId);
+        BodyStyle = WebMessageBodyStyle.WrappedRequest,
+        UriTemplate = "{empresa}/AddDoc/{objCode}/{draftId}?expectedTotal={expectedTotal}")]
+    string AddDoc(string empresa, string objCode, string draftId, string expectedTotal);
 
 }

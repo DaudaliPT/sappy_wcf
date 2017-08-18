@@ -114,7 +114,7 @@ public class SappyWcf : I_SappyWcf
 
 
     // [STAOperationBehavior]
-    public string AddDoc(string empresa, string objCode, string draftId)
+    public string AddDoc(string empresa, string objCode, string draftId,string expectedTotal)
     {
         Result result = new Result();
         string sInfo = "AddDoc";
@@ -131,8 +131,9 @@ public class SappyWcf : I_SappyWcf
             {
                 Logger.LogInvoke(sInfo, "");
                 int Id = Convert.ToInt32(draftId);
+                double ExpectedTotal = Convert.ToDouble(expectedTotal,CultureInfo.InvariantCulture);
 
-                result.result = sboCon.Confirmar_SAPPY_DOC(objCode, Id);
+                result.result = sboCon.Confirmar_SAPPY_DOC(objCode, Id, ExpectedTotal);
             }
             catch (System.Exception ex)
             {

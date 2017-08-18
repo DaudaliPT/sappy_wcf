@@ -56,14 +56,14 @@ class SBOContext : IDisposable
         }
     }
 
-    internal int Confirmar_SAPPY_DOC(string objCode, int draftId)
+    internal AddDocResult Confirmar_SAPPY_DOC(string objCode, int draftId, double expectedTotal)
     {
         var sqlHeader = "SELECT T0.* ";
         sqlHeader += "\n , OCPR.\"CntctCode\"";
         sqlHeader += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC T0";
         sqlHeader += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OCPR OCPR";
         sqlHeader += "\n        ON T0.CARDCODE = OCPR.\"CardCode\"";
-        sqlHeader += "\n        ON T0.CONTACT  = OCPR.\"Name\"";
+        sqlHeader += "\n       AND T0.CONTACT  = OCPR.\"Name\"";
         sqlHeader += "\n WHERE T0.ID =" + draftId;
 
         var sqlDetail = "SELECT T1.*";
@@ -105,7 +105,7 @@ class SBOContext : IDisposable
             if ((int)header["CntctCode"] != 0) newDoc.ContactPersonCode = (int)header["CntctCode"];
 
             newDoc.UserFields.Fields.Item("U_apyUSER").Value = (string)header["CREATED_BY_NAME"];
-            newDoc.UserFields.Fields.Item("U_apyINCONF").Value = (int)header["HASINCONF"] == 1 ? "Y" : "N";
+            newDoc.UserFields.Fields.Item("U_apyINCONF").Value = (short)header["HASINCONF"] == 1 ? "Y" : "N";
 
             foreach (DataRow line in detailsDt.Rows)
             {
@@ -121,11 +121,13 @@ class SBOContext : IDisposable
 
                 //Preço
                 newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
+                newDoc.Lines.DiscountPercent = (double)(decimal)line["DISCOUNT"];
                 newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
 
                 //Iva
-                newDoc.Lines.VatGroup = (string)line["VATGROUP"];
-                newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (int)line["HASINCONF"] == 1 ? "Y" : "N";
+                newDoc.Lines.TaxCode = (string)line["VATGROUP"];
+                //     newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
 
 
                 var BONUS_NAP = (short)line["BONUS_NAP"];
@@ -139,6 +141,8 @@ class SBOContext : IDisposable
                     newDoc.Lines.Factor1 = -1 * (double)(decimal)line["QTCX"];      // Num caixas/pack
                     newDoc.Lines.Factor2 = (double)(decimal)line["QTPK"];           // Qdd por Caixa/pack
                     newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
+                    newDoc.Lines.TaxCode = (string)line["VATGROUP"];
+                    // newDoc.Lines.VatGroup = (string)line["VATGROUP"];
                 }
                 else
                 {
@@ -146,7 +150,7 @@ class SBOContext : IDisposable
                     // fazemos isso principalmente porque isso fará o SAP calcular a percentagem de desconto e a base de imposto será seguramente a mesma, 
                     // sem diferenças causadas por arredondamentos.
                     // Isso pode causar % de descontos muitos pequenas e até negativas (mas sem significado nos valores)
-                    newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
+                    // newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
                 }
             }
 
@@ -156,23 +160,41 @@ class SBOContext : IDisposable
             // ARREDONDAMENTO DE TOTAL
             if ((double)(decimal)header["ROUNDVAL"] != 0)
             {
-                newDoc.Rounding= SAPbobsCOM.BoYesNoEnum.tYES;
+                newDoc.Rounding = SAPbobsCOM.BoYesNoEnum.tYES;
                 newDoc.RoundingDiffAmount = (double)(decimal)header["ROUNDVAL"];
             }
 
 
             try
             {
-                int docentry = 0;
                 this.company.StartTransaction();
 
                 if (newDoc.Add() != 0)
                 {
-                    throw new Exception("Não foi possível gravar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    var ex = new Exception("Não foi possível gravar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                    //log the xml to allow easier debug
+                    var xml = newDoc.GetAsXML();
+                    Logger.Log.Debug(xml, ex);
+
+                    throw ex;
                 }
-                else
+
+                int docentry = 0;
+                int.TryParse(this.company.GetNewObjectKey(), out docentry);
+
+
+                if (newDoc.GetByKey(docentry) == false)
                 {
-                    int.TryParse(this.company.GetNewObjectKey(), out docentry);
+                    throw new Exception("Não foi obter o documento criado em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                }
+
+                AddDocResult result = new AddDocResult();
+                if (newDoc.DocTotal != expectedTotal)
+                {
+                    result.DocTotal = newDoc.DocTotal;
+                    result.message = "(TOTALDIF) O total não é o esperado.";
+                    return result;
                 }
 
                 this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
@@ -181,12 +203,10 @@ class SBOContext : IDisposable
                 dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC WHERE ID =" + draftId);
                 dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES WHERE ID =" + draftId);
 
-                if (newDoc.GetByKey(docentry))
-                {
-                    return newDoc.DocNum;
-                }
-
-                return docentry;
+                result.DocEntry = docentry;
+                result.DocNum = newDoc.DocNum;
+                result.DocTotal = newDoc.DocTotal;
+                return result;
             }
             finally
             {
