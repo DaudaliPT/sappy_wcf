@@ -54,9 +54,7 @@ class SBOContext : IDisposable
             catch (Exception) { }
             finally { Marshal.ReleaseComObject(this.company); }
         }
-    }
-
-
+    } 
      
     internal AddDocResult Confirmar_SAPPY_DOC(string objCode, int draftId, double expectedTotal)
     {
