@@ -57,138 +57,7 @@ class SBOContext : IDisposable
     }
 
 
-
-    /*
-     * 
-
-
-Public Function GerarRevalorizacaoInventario(PrimeiraVal As Boolean, comment As String) As Boolean
-    Dim vDocRV          As SAPbobsCOM.MaterialRevaluation
-    Dim vDocStk         As SAPbobsCOM.Documents
-    Dim Ret             As Long
-    Dim X               As Long
-    Dim ObjType
-    Dim eRrCode         As Long
-    Dim eRrMsg          As String
-    Dim sUpdatesCount   As Long
-    
-    Dim docRVtemlinhas As Boolean
-    docRVtemlinhas = False
-    
-    ObjType = oMaterialRevaluation  'REVALORIZA��O INVENT�RIO
-    
-    On Error GoTo GerarRevalorizacaoInventario_Error
-    
-    GerarRevalorizacaoInventario = True
-   
-    If Plan_Artigo_Inv(0) <> "" Then
-        Set vDocRV = this.company.GetBusinessObject(oMaterialRevaluation)
-        vDocRV.RevalType = "P"
-        vDocRV.DocDate = Plan_DocDate_INV
-        vDocRV.TaxDate = Plan_DocDate_INV
-        vDocRV.Series = sbo.SerieCorrespondenteNoSAP(LerOutrasOpcoes("SERIE_REVINV"), ObjType)
-        vDocRV.Comments = comment
-        
-        If PrimeiraVal = True Then
-            Set vDocStk = this.company.GetBusinessObject(oInventoryGenEntry)
-            vDocStk.Comments = "Entrada de stock Autom�tico"
-            vDocStk.Series = sbo.SerieCorrespondenteNoSAP(LerOutrasOpcoes("SERIE_STOCKENTRADA"), oInventoryGenEntry)
-        Else
-            Set vDocStk = this.company.GetBusinessObject(oInventoryGenExit)
-            vDocStk.JournalMemo = "Sa�da de Mat�rias (Autom�tico)"
-            vDocStk.PaymentGroupCode = -3          'Ser� Pre�o m�dio ???, n�o documentado, mas permitido
-            vDocStk.Comments = "Sa�da de stock Autom�tico"
-            vDocStk.Series = sbo.SerieCorrespondenteNoSAP(LerOutrasOpcoes("SERIE_STOCKSAIDA"), oInventoryGenExit)
-        End If
-        vDocStk.DocDate = Plan_DocDate_INV
-        vDocStk.TaxDate = Plan_DocDate_INV
-        
-        sUpdatesCount = 0
-        For X = 0 To UBound(Plan_Artigo_Inv)
-            If Plan_Artigo_Inv(X) <> "" Then
-                If Arredondar(myVal(Plan_Stock_Inv(X)) - myVal(Plan_Artigo_Qtd(X)), 6) < 0 Then
-                    If vDocStk.LINES.ItemCode <> "" Then vDocStk.LINES.Add
-                    vDocStk.LINES.ItemCode = Plan_Artigo_Inv(X) & ""
-                    vDocStk.LINES.WarehouseCode = Plan_Armazem_Inv(X) & ""
-                    vDocStk.LINES.Quantity = Abs(myVal(Plan_Stock_Inv(X)) - myVal(Plan_Artigo_Qtd(X))) + 1 'DEVIDO A PROBLEMAS COM DECIMAIS, SOMAMOS (E DEPOIS SUBTRA�MOS) "1" � QUANT.
-                    vDocStk.LINES.UnitPrice = GetPrecoMedio(Plan_Artigo_Inv(X), Plan_Armazem_Inv(X))
-                    sUpdatesCount = sUpdatesCount + 1
-                End If
-                
-                If PrimeiraVal = True Then
-                    If Plan_PrecoNew_Inv(X) <> Plan_PrecoOld_Inv(X) Then
-                        docRVtemlinhas = True
-                        If vDocRV.LINES.ItemCode <> "" Then vDocRV.LINES.Add
-                        vDocRV.LINES.ItemCode = Plan_Artigo_Inv(X) & ""
-                        vDocRV.LINES.WarehouseCode = Plan_Armazem_Inv(X) & ""
-                        vDocRV.LINES.Price = CDbl(Plan_PrecoNew_Inv(X))
-                    End If
-                Else
-                    If Plan_FazSegundaRevalorizacao(X) Then
-                        docRVtemlinhas = True
-                        If vDocRV.LINES.ItemCode <> "" Then vDocRV.LINES.Add
-                        vDocRV.LINES.ItemCode = Plan_Artigo_Inv(X) & ""
-                        vDocRV.LINES.WarehouseCode = Plan_Armazem_Inv(X) & ""
-                        vDocRV.LINES.Price = CDbl(Plan_PrecoAct_Inv(X))
-                    End If
-                End If
-            End If
-        Next
-        
-        If PrimeiraVal = True Then
-            If vDocStk.LINES.ItemCode <> "" Then
-                Ret = vDocStk.Add
-                If Ret = 0 Then
-                    GerarRevalorizacaoInventario = True
-                    vDocStk.GetByKey this.company.GetNewObjectKey   'RETORNA O N�MERO DO DOCUMENTO CRIADO
-                Else
-                    'Deu erro durante a cria��o do Documento
-                    this.company.GetLastError eRrCode, eRrMsg
-                    sbo.MyMessageBox Traduz("Erro ao gerar a documento: ", "FrmPlanCarga.MSG014r") & eRrMsg
-                    GoTo GerarRevalorizacaoInventario_Error
-                End If
-            End If
-        End If
-        
-        If docRVtemlinhas Then
-            Ret = vDocRV.Add
-            If Ret = 0 Then
-                GerarRevalorizacaoInventario = True
-                vDocRV.GetByKey this.company.GetNewObjectKey   'RETORNA O N�MERO DO DOCUMENTO CRIADO
-            Else
-                'Deu erro durante a cria��o do Documento
-                this.company.GetLastError eRrCode, eRrMsg
-                sbo.MyMessageBox Traduz("Erro ao gerar a documento: ", "FrmPlanCarga.MSG014") & eRrMsg
-                GoTo GerarRevalorizacaoInventario_Error
-            End If
-        End If
-        
-        If PrimeiraVal = False Then
-            If vDocStk.LINES.ItemCode <> "" Then
-                Ret = vDocStk.Add
-                If Ret = 0 Then
-                    GerarRevalorizacaoInventario = True
-                    vDocStk.GetByKey this.company.GetNewObjectKey   'RETORNA O N�MERO DO DOCUMENTO CRIADO
-                Else
-                    'Deu erro durante a cria��o do Documento
-                    this.company.GetLastError eRrCode, eRrMsg
-                    sbo.MyMessageBox Traduz("Erro ao gerar a documento: ", "FrmPlanCarga.MSG014r") & eRrMsg
-                    GoTo GerarRevalorizacaoInventario_Error
-                End If
-            End If
-        End If
-    End If
-
-    Set vDocRV = Nothing
-        
-   On Error GoTo 0
-   Exit Function
-
-GerarRevalorizacaoInventario_Error:
-    GerarRevalorizacaoInventario = False
-End Function
-     */
-
+     
     internal AddDocResult Confirmar_SAPPY_DOC(string objCode, int draftId, double expectedTotal)
     {
 
@@ -216,9 +85,25 @@ End Function
         sqlDetail += "\n WHERE T1.ID =" + draftId;
         sqlDetail += "\n ORDER BY T1.LINENUM";
 
+
+        var sqlDetailNET = "SELECT T1.ITEMCODE, T1.WHSCODE, SUM(T1.QTSTK) AS QTSTK";
+        sqlDetailNET += "\n , SUM(CASE WHEN T1.BONUS_NAP=1 THEN T1.PRICE*T1.QTSTK ELSE T1.LINETOTAL END) AS TRANSCOST";
+        sqlDetailNET += "\n , SUM(T1.NETPRICE*T1.QTSTK) AS TRANSCOSTNET";
+        sqlDetailNET += "\n , OITW.\"OnHand\"";
+        sqlDetailNET += "\n , OITW.\"AvgPrice\"";
+        sqlDetailNET += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
+        sqlDetailNET += "\n INNER JOIN \"" + this.company.CompanyDB + "\".OITM OITM on T1.ITEMCODE = OITM.\"ItemCode\"";
+        sqlDetailNET += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OITW OITW on T1.ITEMCODE = OITW.\"ItemCode\" AND T1.WHSCODE = OITW.\"WhsCode\"";
+        sqlDetailNET += "\n WHERE T1.ID =" + draftId;
+        sqlDetailNET += "\n GROUP BY T1.ITEMCODE, T1.WHSCODE";
+        sqlDetailNET += "\n , OITW.\"OnHand\"";
+        sqlDetailNET += "\n , OITW.\"AvgPrice\"";
+        sqlDetailNET += "\n ORDER BY MIN(T1.LINENUM)";
+
         using (HelperOdbc dataLayer = new HelperOdbc())
         using (DataTable headerDt = dataLayer.Execute(sqlHeader))
         using (DataTable detailsDt = dataLayer.Execute(sqlDetail))
+        using (DataTable detailsDtNET = dataLayer.Execute(sqlDetailNET))
         {
             DataRow header = headerDt.Rows[0];
 
@@ -260,9 +145,20 @@ End Function
                 newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
                 newDoc.Lines.DiscountPercent = (double)(decimal)line["DISCOUNT"];
                 newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
-                newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = (double)(decimal)line["NETPRICE"];
                 newDoc.Lines.TaxCode = (string)line["VATGROUP"];
                 newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
+
+
+                // Estes campos atualmente estão ao nivel de cabeçalho, mas são guardados no documento nas linhas,
+                // porque preve-se que no futuro esta tenha que ser uma informação linha a linha.
+                newDoc.Lines.UserFields.Fields.Item("U_apyDFIN").Value = (string)header["DESCFIN"];
+                newDoc.Lines.UserFields.Fields.Item("U_apyDDEB").Value = (string)header["DESCDEB"];
+                newDoc.Lines.UserFields.Fields.Item("U_apyDFINAC").Value = (short)header["DESCFINAC"] == 1 ? "Y" : "N";
+                newDoc.Lines.UserFields.Fields.Item("U_apyDDEBAC").Value = (short)header["DESCDEBAC"] == 1 ? "Y" : "N";
+                newDoc.Lines.UserFields.Fields.Item("U_apyDDEBPER").Value = (string)header["DESCDEBPER"];
+
+                newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = (double)(decimal)line["NETPRICE"];
+
 
                 if (BONUS_NAP == 0)
                 {
@@ -314,20 +210,17 @@ End Function
                     invExit.TaxDate = DOCDATE;
                 }
 
-                foreach (DataRow line in detailsDt.Rows)
+                foreach (DataRow line in detailsDtNET.Rows)
                 {
                     var qty = (decimal)line["QTSTK"];
                     var onHand = (decimal)line["OnHand"];
-                    var newOnHand = onHand + qty;
-                    var BONUS_NAP = (short)line["BONUS_NAP"];
-                    var docPrice = (decimal)line["PRICE"];
-                    var docPriceNet = (decimal)line["NETPRICE"];
-                    var transCost = (decimal)line["LINETOTAL"];
-                    var transCostNet = docPriceNet * qty;
-                    var avgPrice = (decimal)line["AvgPrice"];
+                    var newOnHand = onHand + qty; 
+                    var transCost = (decimal)line["TRANSCOST"];
+                    var transCostNet = (decimal)line["TRANSCOSTNET"];
+                    var avgPrice = (decimal)line["AvgPrice"]; 
 
-                    if (BONUS_NAP == 1) transCost = docPrice * qty; // caso dos bonus
-
+                    decimal docPriceNet = 0;
+                    if (qty != 0) docPriceNet = Math.Round(transCostNet / qty, priceDecimals);
                     decimal stkValue = onHand * avgPrice + transCost;
                     decimal stkValueNet = onHand * avgPrice + transCostNet;
                     decimal sapPmc = 0;
@@ -377,6 +270,30 @@ End Function
             {
                 this.company.StartTransaction();
 
+                if (hasFakeEntryExit)
+                {
+                    // invEntry.Reference2 = newDoc.DocNum.ToString();              //preenchido mais abaixo
+                    // invEntry.Comments = "Referente a " + newDoc.JournalMemo;     //preenchido mais abaixo
+                    if (invEntry.Add() != 0)
+                    {
+                        var ex = new Exception("Não foi possível gravar fakeEntry em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                        //log the xml to allow easier debug
+                        var xml = invEntry.GetAsXML();
+                        Logger.Log.Debug(xml, ex);
+
+                        throw ex;
+                    }
+
+                    int docentry = 0;
+                    int.TryParse(this.company.GetNewObjectKey(), out docentry);
+
+                    if (invEntry.GetByKey(docentry) == false)
+                    {
+                        throw new Exception("Não foi obter o fakeEntry criada em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    }
+                }
+
                 if (newDoc.Add() != 0)
                 {
                     var ex = new Exception("Não foi possível gravar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
@@ -387,14 +304,15 @@ End Function
 
                     throw ex;
                 }
-
-                int docentry = 0;
-                int.TryParse(this.company.GetNewObjectKey(), out docentry);
-
-
-                if (newDoc.GetByKey(docentry) == false)
+                else
                 {
-                    throw new Exception("Não foi obter o documento criado em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    int docentry = 0;
+                    int.TryParse(this.company.GetNewObjectKey(), out docentry);
+
+                    if (newDoc.GetByKey(docentry) == false)
+                    {
+                        throw new Exception("Não foi obter o documento criado em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    }
                 }
 
                 AddDocResult result = new AddDocResult();
@@ -407,11 +325,12 @@ End Function
 
                 if (hasFakeEntryExit)
                 {
+                    //Atualizar as referências na entrada de stock
                     invEntry.Reference2 = newDoc.DocNum.ToString();
                     invEntry.Comments = "Referente a " + newDoc.JournalMemo;
-                    if (invEntry.Add() != 0)
+                    if (invEntry.Update() != 0)
                     {
-                        var ex = new Exception("Não foi possível gravar fakeEntry em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                        var ex = new Exception("Não foi possível atualizar fakeEntry em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
 
                         //log the xml to allow easier debug
                         var xml = invEntry.GetAsXML();
@@ -420,6 +339,7 @@ End Function
                         throw ex;
                     }
                 }
+
                 if (hasRevalorizacao)
                 {
                     invReval.Reference2 = newDoc.DocNum.ToString();
@@ -459,7 +379,7 @@ End Function
                 dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC WHERE ID =" + draftId);
                 dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES WHERE ID =" + draftId);
 
-                result.DocEntry = docentry;
+                result.DocEntry = newDoc.DocEntry;
                 result.DocNum = newDoc.DocNum;
                 result.DocTotal = newDoc.DocTotal;
                 return result;
