@@ -54,8 +54,8 @@ class SBOContext : IDisposable
             catch (Exception) { }
             finally { Marshal.ReleaseComObject(this.company); }
         }
-    } 
-     
+    }
+
     internal AddDocResult Confirmar_SAPPY_DOC(string objCode, int draftId, double expectedTotal)
     {
 
@@ -212,10 +212,10 @@ class SBOContext : IDisposable
                 {
                     var qty = (decimal)line["QTSTK"];
                     var onHand = (decimal)line["OnHand"];
-                    var newOnHand = onHand + qty; 
+                    var newOnHand = onHand + qty;
                     var transCost = (decimal)line["TRANSCOST"];
                     var transCostNet = (decimal)line["TRANSCOSTNET"];
-                    var avgPrice = (decimal)line["AvgPrice"]; 
+                    var avgPrice = (decimal)line["AvgPrice"];
 
                     decimal docPriceNet = 0;
                     if (qty != 0) docPriceNet = Math.Round(transCostNet / qty, priceDecimals);
@@ -386,6 +386,90 @@ class SBOContext : IDisposable
             {
                 if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
             }
+        }
+    }
+
+
+
+
+
+    internal AddDocResult Registar_Recebimento(string cardCode, string JDT1_IDS, double expectedTotal)
+    {
+        SAPbobsCOM.Payments d;
+
+        // emitir um recebimento no cliente 
+        d = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oIncomingPayments);
+        // d.Series = Convert.ToInt32(EncContas.serieECrec);
+
+
+        d.DocType = SAPbobsCOM.BoRcptTypes.rCustomer;
+
+        // d.Remarks = "Enc.Contas";
+        // d.DocDate = EncContas.DataDoc.yyyyMMdd_ToDateTime();
+        // d.DueDate = EncContas.DataVenc.yyyyMMdd_ToDateTime();
+        d.CardCode = cardCode;
+
+
+
+        // d.TransferAccount = EncContas.contaEC;
+        // d.TransferSum = valorEC;
+
+        // if (EncContas.fluxocaixaEC != "")
+        // {
+        //     d.PrimaryFormItems.CashFlowLineItemID = Convert.ToInt32(EncContas.fluxocaixaEC);
+        //     d.PrimaryFormItems.PaymentMeans = PaymentMeansTypeEnum.pmtBankTransfer;
+        // }
+
+        // adicionar os documentos  
+        //double totalInvoices = 0;
+        //foreach (var item in entidade.linhas)
+        //{
+        //    if (item.CardType == "C" && item.Selected && item.Pagar != 0)
+        //    {
+        //        if (d.Invoices.DocEntry != 0) d.Invoices.Add();
+        //        d.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)Convert.ToInt32(item.TransType);
+        //        d.Invoices.DocEntry = item.CreatedBy;
+        //        d.Invoices.DocLine = item.Line_ID;
+
+        //        if (totalInvoices - item.Pagar > d.TransferSum)
+        //            d.Invoices.SumApplied = (d.TransferSum - totalInvoices);
+        //        else
+        //            d.Invoices.SumApplied = -item.Pagar;
+
+        //        totalInvoices += d.Invoices.SumApplied;
+        //        item.ECFeito = -d.Invoices.SumApplied;
+
+        //        if (totalInvoices >= d.TransferSum)
+        //        {
+        //            break;
+        //        }
+        //    }
+        //}
+
+
+
+        this.company.StartTransaction();
+        try
+        {
+            int err;
+            string msg;
+
+            if (d.Add() != 0)// saves the data 
+            {
+                this.company.GetLastError(out err, out msg);
+                throw new Exception(msg);
+            }
+
+            this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+
+
+            AddDocResult result = new AddDocResult();
+
+            return result;
+        }
+        finally
+        {
+            if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
         }
     }
 }
