@@ -86,7 +86,7 @@ class SBOContext : IDisposable
 
         var sqlDetailNET = "SELECT T1.ITEMCODE, T1.WHSCODE, SUM(T1.QTSTK) AS QTSTK";
         sqlDetailNET += "\n , SUM(CASE WHEN T1.BONUS_NAP=1 THEN T1.PRICE*T1.QTSTK ELSE T1.LINETOTAL END) AS TRANSCOST";
-        sqlDetailNET += "\n , SUM(T1.NETPRICE*T1.QTSTK) AS TRANSCOSTNET";
+        sqlDetailNET += "\n , SUM(T1.NETTOTAL) AS TRANSCOSTNET";
         sqlDetailNET += "\n , OITW.\"OnHand\"";
         sqlDetailNET += "\n , OITW.\"AvgPrice\"";
         sqlDetailNET += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
@@ -141,8 +141,6 @@ class SBOContext : IDisposable
                 //newDoc.Lines.InventoryQuantity = (double)(decimal)line["QTSTK"]; //Definir sobrepoe os fatores 1 e 2
                 newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
                 newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
-                newDoc.Lines.DiscountPercent = (double)(decimal)line["DISCOUNT"];
-                newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
                 newDoc.Lines.TaxCode = (string)line["VATGROUP"];
                 newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
 
@@ -156,10 +154,12 @@ class SBOContext : IDisposable
                 newDoc.Lines.UserFields.Fields.Item("U_apyDDEBPER").Value = (string)header["DESCDEBPER"];
 
                 newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = (double)(decimal)line["NETPRICE"];
-
+                newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = (double)(decimal)line["NETTOTAL"];
 
                 if (BONUS_NAP == 0)
                 {
+                    newDoc.Lines.DiscountPercent = (double)(decimal)line["DISCOUNT"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
                     newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
                 }
                 else
@@ -199,8 +199,10 @@ class SBOContext : IDisposable
             if (sujRevalorizacaoNET)
             {
                 invEntry = this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oInventoryGenEntry);
-                invReval = this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oMaterialRevaluation);
                 invExit = this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oInventoryGenExit);
+                invReval = this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oMaterialRevaluation);
+                invReval.RevalType = "M"; // Débito/Crédito
+
                 if (DOCDATE.Year > 1900)
                 {
                     invEntry.TaxDate = DOCDATE;
@@ -210,38 +212,34 @@ class SBOContext : IDisposable
 
                 foreach (DataRow line in detailsDtNET.Rows)
                 {
-                    var qty = (decimal)line["QTSTK"];
+                    var transQty = (decimal)line["QTSTK"];
                     var onHand = (decimal)line["OnHand"];
-                    var newOnHand = onHand + qty;
+                    var avgPrice = (decimal)line["AvgPrice"];
                     var transCost = (decimal)line["TRANSCOST"];
                     var transCostNet = (decimal)line["TRANSCOSTNET"];
-                    var avgPrice = (decimal)line["AvgPrice"];
-
-                    decimal docPriceNet = 0;
-                    if (qty != 0) docPriceNet = Math.Round(transCostNet / qty, priceDecimals);
-                    decimal stkValue = onHand * avgPrice + transCost;
-                    decimal stkValueNet = onHand * avgPrice + transCostNet;
-                    decimal sapPmc = 0;
-                    decimal pmcNet = 0;
-
-                    if (newOnHand > 0)
-                    {
-                        sapPmc = Math.Round(stkValue / newOnHand, priceDecimals);
-                        pmcNet = Math.Round(stkValueNet / newOnHand, priceDecimals);
-                    }
-                    if (onHand <= 0) pmcNet = Math.Round(docPriceNet, priceDecimals);
+                    var finalOnHand = onHand + transQty;
 
 
                     if (onHand < 0)
                     {
                         hasFakeEntryExit = true;
 
+                        decimal finalStkValue = onHand * avgPrice + transCostNet;
+                        decimal finalPmc = 0;
+                        if (finalOnHand > 0) finalPmc = finalStkValue / finalOnHand;
+
+                        if (onHand <= 0)
+                        {
+                            decimal docPriceNet = 0;
+                            if (transQty != 0) docPriceNet = transCostNet / transQty;
+                            finalPmc = docPriceNet;
+                        }
                         // add fake stock to make it zero, before
                         if (invEntry.Lines.ItemCode != "") invEntry.Lines.Add();
                         invEntry.Lines.ItemCode = (string)line["ITEMCODE"];
                         invEntry.Lines.WarehouseCode = (string)line["WHSCODE"];
                         invEntry.Lines.InventoryQuantity = (double)onHand * -1;
-                        invEntry.Lines.UnitPrice = (double)pmcNet;
+                        invEntry.Lines.UnitPrice = (double)finalPmc;
 
                         // remove fake stock, so qty stays correct, after
                         if (invExit.Lines.ItemCode != "") invExit.Lines.Add();
@@ -250,13 +248,14 @@ class SBOContext : IDisposable
                         invExit.Lines.InventoryQuantity = (double)onHand * -1;
                     }
 
-                    if (sapPmc != pmcNet && newOnHand > 0)
+                    if (transCost != transCostNet && finalOnHand > 0)
                     {
                         hasRevalorizacao = true;
                         if (invReval.Lines.ItemCode != "") invReval.Lines.Add();
                         invReval.Lines.ItemCode = (string)line["ITEMCODE"];
                         invReval.Lines.WarehouseCode = (string)line["WHSCODE"];
-                        invReval.Lines.Price = (double)pmcNet;
+                        invReval.Lines.DebitCredit = (double)(transCostNet - transCost);
+                        invReval.Lines.Quantity = (double)finalOnHand;
                     }
                 }
             }
@@ -316,6 +315,11 @@ class SBOContext : IDisposable
                 AddDocResult result = new AddDocResult();
                 if (newDoc.DocTotal != expectedTotal)
                 {
+
+                    //log the xml to allow easier debug
+                    var xml = newDoc.GetAsXML();
+                    Logger.Log.Debug(xml);
+
                     result.DocTotal = newDoc.DocTotal;
                     result.message = "(TOTALDIF) O total não é o esperado.";
                     return result;
@@ -386,90 +390,6 @@ class SBOContext : IDisposable
             {
                 if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
             }
-        }
-    }
-
-
-
-
-
-    internal AddDocResult Registar_Recebimento(string cardCode, string JDT1_IDS, double expectedTotal)
-    {
-        SAPbobsCOM.Payments d;
-
-        // emitir um recebimento no cliente 
-        d = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oIncomingPayments);
-        // d.Series = Convert.ToInt32(EncContas.serieECrec);
-
-
-        d.DocType = SAPbobsCOM.BoRcptTypes.rCustomer;
-
-        // d.Remarks = "Enc.Contas";
-        // d.DocDate = EncContas.DataDoc.yyyyMMdd_ToDateTime();
-        // d.DueDate = EncContas.DataVenc.yyyyMMdd_ToDateTime();
-        d.CardCode = cardCode;
-
-
-
-        // d.TransferAccount = EncContas.contaEC;
-        // d.TransferSum = valorEC;
-
-        // if (EncContas.fluxocaixaEC != "")
-        // {
-        //     d.PrimaryFormItems.CashFlowLineItemID = Convert.ToInt32(EncContas.fluxocaixaEC);
-        //     d.PrimaryFormItems.PaymentMeans = PaymentMeansTypeEnum.pmtBankTransfer;
-        // }
-
-        // adicionar os documentos  
-        //double totalInvoices = 0;
-        //foreach (var item in entidade.linhas)
-        //{
-        //    if (item.CardType == "C" && item.Selected && item.Pagar != 0)
-        //    {
-        //        if (d.Invoices.DocEntry != 0) d.Invoices.Add();
-        //        d.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)Convert.ToInt32(item.TransType);
-        //        d.Invoices.DocEntry = item.CreatedBy;
-        //        d.Invoices.DocLine = item.Line_ID;
-
-        //        if (totalInvoices - item.Pagar > d.TransferSum)
-        //            d.Invoices.SumApplied = (d.TransferSum - totalInvoices);
-        //        else
-        //            d.Invoices.SumApplied = -item.Pagar;
-
-        //        totalInvoices += d.Invoices.SumApplied;
-        //        item.ECFeito = -d.Invoices.SumApplied;
-
-        //        if (totalInvoices >= d.TransferSum)
-        //        {
-        //            break;
-        //        }
-        //    }
-        //}
-
-
-
-        this.company.StartTransaction();
-        try
-        {
-            int err;
-            string msg;
-
-            if (d.Add() != 0)// saves the data 
-            {
-                this.company.GetLastError(out err, out msg);
-                throw new Exception(msg);
-            }
-
-            this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
-
-
-            AddDocResult result = new AddDocResult();
-
-            return result;
-        }
-        finally
-        {
-            if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
         }
     }
 }
