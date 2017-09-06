@@ -113,9 +113,9 @@ class SBOContext : IDisposable
 
             SAPbobsCOM.Documents newDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
             newDoc.Series = (int)header["DOCSERIES"];
-            DateTime DOCDATE = (DateTime)header["DOCDATE"];
+            DateTime TAXDATE = (DateTime)header["TAXDATE"];
             DateTime DOCDUEDATE = (DateTime)header["DOCDUEDATE"];
-            if (DOCDATE.Year > 1900) newDoc.TaxDate = DOCDATE;
+            if (TAXDATE.Year > 1900) newDoc.TaxDate = TAXDATE;
             if (DOCDUEDATE.Year > 1900) newDoc.DocDueDate = DOCDUEDATE;
 
             newDoc.CardCode = (string)header["CARDCODE"];
@@ -141,6 +141,7 @@ class SBOContext : IDisposable
                 //newDoc.Lines.InventoryQuantity = (double)(decimal)line["QTSTK"]; //Definir sobrepoe os fatores 1 e 2
                 newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
                 newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
+                newDoc.Lines.VatGroup = (string)line["VATGROUP"];
                 newDoc.Lines.TaxCode = (string)line["VATGROUP"];
                 newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
 
@@ -203,11 +204,11 @@ class SBOContext : IDisposable
                 invReval = this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oMaterialRevaluation);
                 invReval.RevalType = "M"; // Débito/Crédito
 
-                if (DOCDATE.Year > 1900)
+                if (TAXDATE.Year > 1900)
                 {
-                    invEntry.TaxDate = DOCDATE;
-                    invReval.TaxDate = DOCDATE;
-                    invExit.TaxDate = DOCDATE;
+                    invEntry.TaxDate = TAXDATE;
+                    invReval.TaxDate = TAXDATE;
+                    invExit.TaxDate = TAXDATE;
                 }
 
                 foreach (DataRow line in detailsDtNET.Rows)
