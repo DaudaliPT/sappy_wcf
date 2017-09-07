@@ -15,6 +15,13 @@ namespace SappyWCF_windowsService
 
         public Installer1()
         {
+            string parvals = "";
+            foreach (string item in this.Context.Parameters.Keys)
+            {
+                string value = this.Context.Parameters[item];
+                parvals += "\n" + item + "=" + value;
+            }
+            this.Context.LogMessage(parvals);
             InitializeComponent();
             this.process = new ServiceProcessInstaller();
             this.process.Account = ServiceAccount.LocalSystem;
