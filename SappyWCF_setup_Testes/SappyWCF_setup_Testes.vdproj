@@ -3,7 +3,7 @@
 "VSVersion" = "3:800"
 "ProjectType" = "8:{978C614F-708E-4E1A-B201-565925725DBA}"
 "IsWebType" = "8:FALSE"
-"ProjectName" = "8:SappyWCFtestes_setup"
+"ProjectName" = "8:SappyWCF_setup_Testes"
 "LanguageId" = "3:1033"
 "CodePage" = "3:1252"
 "UILanguageId" = "3:1033"
@@ -16,13 +16,13 @@
         "Entry"
         {
         "MsmKey" = "8:_07E42FE26F5119CAC4A7B91AD64D666F"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_07E42FE26F5119CAC4A7B91AD64D666F"
-        "OwnerKey" = "8:_E563FCA22B1E5FC5BFB50604396E2902"
+        "OwnerKey" = "8:_F4767AC0FA1189D1D5B153AC2A68168A"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -34,7 +34,7 @@
         "Entry"
         {
         "MsmKey" = "8:_07E42FE26F5119CAC4A7B91AD64D666F"
-        "OwnerKey" = "8:_F4767AC0FA1189D1D5B153AC2A68168A"
+        "OwnerKey" = "8:_E563FCA22B1E5FC5BFB50604396E2902"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -46,7 +46,7 @@
         "Entry"
         {
         "MsmKey" = "8:_09BA4873E86C0B821409A8C59C3FEEFC"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -64,13 +64,13 @@
         "Entry"
         {
         "MsmKey" = "8:_106CBCB9366E4BE5D30B29BE1D905888"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_106CBCB9366E4BE5D30B29BE1D905888"
-        "OwnerKey" = "8:_EAE78CD81C8C6EBAF0E8014A7B85E474"
+        "OwnerKey" = "8:_F4C9FDB1F41DA88BFEF0F502DC04A7A1"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -94,13 +94,13 @@
         "Entry"
         {
         "MsmKey" = "8:_1455BB41D2978DDA5BC9C4F7227F4F88"
-        "OwnerKey" = "8:_EAE78CD81C8C6EBAF0E8014A7B85E474"
+        "OwnerKey" = "8:_F4C9FDB1F41DA88BFEF0F502DC04A7A1"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_1455BB41D2978DDA5BC9C4F7227F4F88"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -118,7 +118,7 @@
         "Entry"
         {
         "MsmKey" = "8:_1B07433841F712EDCE3ADDBE9AD138B4"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -129,14 +129,20 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_2EEE5FF44EF447768013487284937C84"
-        "OwnerKey" = "8:_UNDEFINED"
+        "MsmKey" = "8:_3AB7621C07FC9DBA6CEB171A2004C8C7"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_3AB7621C07FC9DBA6CEB171A2004C8C7"
+        "OwnerKey" = "8:_F4C9FDB1F41DA88BFEF0F502DC04A7A1"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_48FC4883D84AF83AEF36E91855BC9718"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -154,7 +160,7 @@
         "Entry"
         {
         "MsmKey" = "8:_5092117E57A0DD222DE6A1DF3BECB1B7"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -172,13 +178,7 @@
         "Entry"
         {
         "MsmKey" = "8:_5775051C286002A8AE42B1C0B59E92C5"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_591EEC80CAAEE2D5CE567FC655566182"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -189,38 +189,32 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_65EDC1EF8C26F68ABD6FF0319FD9BC56"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "MsmKey" = "8:_591EEC80CAAEE2D5CE567FC655566182"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_65EDC1EF8C26F68ABD6FF0319FD9BC56"
-        "OwnerKey" = "8:_EAE78CD81C8C6EBAF0E8014A7B85E474"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_65EDC1EF8C26F68ABD6FF0319FD9BC56"
+        "OwnerKey" = "8:_F4C9FDB1F41DA88BFEF0F502DC04A7A1"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_661B894EFD7B9FC35D89E396A476C3F4"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_661B894EFD7B9FC35D89E396A476C3F4"
-        "OwnerKey" = "8:_EAE78CD81C8C6EBAF0E8014A7B85E474"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_67B94F3FE0D67A7598CA3C7F17D5B3D8"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_67B94F3FE0D67A7598CA3C7F17D5B3D8"
-        "OwnerKey" = "8:_EAE78CD81C8C6EBAF0E8014A7B85E474"
+        "OwnerKey" = "8:_F4C9FDB1F41DA88BFEF0F502DC04A7A1"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -232,7 +226,7 @@
         "Entry"
         {
         "MsmKey" = "8:_6B5CDF220392C2A22868EF3E23478313"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -280,7 +274,7 @@
         "Entry"
         {
         "MsmKey" = "8:_6F2882B52E2AD8C381708A356885D327"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -298,7 +292,7 @@
         "Entry"
         {
         "MsmKey" = "8:_7BCD26F5C75F9418DA108065AA54108A"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -310,7 +304,7 @@
         "Entry"
         {
         "MsmKey" = "8:_848B167AD6009787B725D76E05655BCB"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -334,7 +328,7 @@
         "Entry"
         {
         "MsmKey" = "8:_A9027C1ED5D51218F3DDF1F8B44F32C7"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -352,7 +346,7 @@
         "Entry"
         {
         "MsmKey" = "8:_D6B38A5BA4379ABE61D2ECBA3BC4CA86"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -376,7 +370,7 @@
         "Entry"
         {
         "MsmKey" = "8:_D7135900E110D52D6DE1E942C08C9A86"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -406,7 +400,7 @@
         "Entry"
         {
         "MsmKey" = "8:_D794E7A751744B618D8A9636A5BB45E3"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -436,7 +430,7 @@
         "Entry"
         {
         "MsmKey" = "8:_E563FCA22B1E5FC5BFB50604396E2902"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -448,7 +442,7 @@
         "Entry"
         {
         "MsmKey" = "8:_EA9088A8B734657ADDEB7F1701377630"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -489,12 +483,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_EAE78CD81C8C6EBAF0E8014A7B85E474"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_F4767AC0FA1189D1D5B153AC2A68168A"
         "OwnerKey" = "8:_106CBCB9366E4BE5D30B29BE1D905888"
         "MsmSig" = "8:_UNDEFINED"
@@ -502,7 +490,13 @@
         "Entry"
         {
         "MsmKey" = "8:_F4767AC0FA1189D1D5B153AC2A68168A"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_F4C9FDB1F41DA88BFEF0F502DC04A7A1"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -514,31 +508,37 @@
         "Entry"
         {
         "MsmKey" = "8:_FD54AB7EB6E55C7A275658DCF431BE80"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_FF55725410094ADC85B1164B231701CF"
+        "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_2EEE5FF44EF447768013487284937C84"
+        "OwnerKey" = "8:_07E42FE26F5119CAC4A7B91AD64D666F"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_591EEC80CAAEE2D5CE567FC655566182"
+        "OwnerKey" = "8:_FF55725410094ADC85B1164B231701CF"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_EAE78CD81C8C6EBAF0E8014A7B85E474"
+        "OwnerKey" = "8:_F4C9FDB1F41DA88BFEF0F502DC04A7A1"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_67B94F3FE0D67A7598CA3C7F17D5B3D8"
+        "OwnerKey" = "8:_3AB7621C07FC9DBA6CEB171A2004C8C7"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -551,6 +551,12 @@
         {
         "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_661B894EFD7B9FC35D89E396A476C3F4"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_591EEC80CAAEE2D5CE567FC655566182"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -667,12 +673,6 @@
         "OwnerKey" = "8:_F4767AC0FA1189D1D5B153AC2A68168A"
         "MsmSig" = "8:_UNDEFINED"
         }
-        "Entry"
-        {
-        "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_07E42FE26F5119CAC4A7B91AD64D666F"
-        "MsmSig" = "8:_UNDEFINED"
-        }
     }
     "Configurations"
     {
@@ -681,7 +681,7 @@
         "DisplayName" = "8:Debug"
         "IsDebugOnly" = "11:TRUE"
         "IsReleaseOnly" = "11:FALSE"
-        "OutputFilename" = "8:Debug\\SappyWCFtestes_setup.msi"
+        "OutputFilename" = "8:Debug\\SappyWCF_setup_Testes.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -718,7 +718,7 @@
         "DisplayName" = "8:Release"
         "IsDebugOnly" = "11:FALSE"
         "IsReleaseOnly" = "11:TRUE"
-        "OutputFilename" = "8:Release\\SappyWCFtestes_setup.msi"
+        "OutputFilename" = "8:Release\\SappyWCF_setup_Testes.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -755,59 +755,59 @@
     {
         "CustomAction"
         {
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_6EAD88C1511447C4B001709A89465E4F"
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_11805CA4CC4D44E491D79D78A9C123B4"
             {
-            "Name" = "8:Primary output from SappyWCF_windowsService (Active)"
+            "Name" = "8:Primary output from SappyWCF_windowsService_Testes (Active)"
             "Condition" = "8:"
-            "Object" = "8:_2EEE5FF44EF447768013487284937C84"
-            "FileType" = "3:2"
-            "InstallAction" = "3:1"
-            "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_26D7C3CC_CA77_4590_8140_9269BCAD62CB"
-            "InstallerClass" = "11:TRUE"
-            "CustomActionData" = "8:"
-            }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_8F6134D36933480F90AA41724AD2DFB6"
-            {
-            "Name" = "8:Primary output from SappyWCF_windowsService (Active)"
-            "Condition" = "8:"
-            "Object" = "8:_2EEE5FF44EF447768013487284937C84"
-            "FileType" = "3:2"
-            "InstallAction" = "3:4"
-            "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_32973FC2_8BBD_413B_A729_97748DD64B53"
-            "InstallerClass" = "11:TRUE"
-            "CustomActionData" = "8:"
-            }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_9F4B022C8E3F437EAF60EF8C4028FC88"
-            {
-            "Name" = "8:Primary output from SappyWCF_windowsService (Active)"
-            "Condition" = "8:"
-            "Object" = "8:_2EEE5FF44EF447768013487284937C84"
+            "Object" = "8:_FF55725410094ADC85B1164B231701CF"
             "FileType" = "3:2"
             "InstallAction" = "3:3"
             "Arguments" = "8:"
             "EntryPoint" = "8:"
             "Sequence" = "3:1"
-            "Identifier" = "8:_418BE8B6_2450_423A_A0EC_01842C4087EE"
+            "Identifier" = "8:_39235939_D617_4551_AA77_F18CFD053708"
             "InstallerClass" = "11:TRUE"
             "CustomActionData" = "8:"
             }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_AF6CAC2899BC457E961680BD0A71047D"
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_1B65245981DB4FAFA60A5476F8DE4E52"
             {
-            "Name" = "8:Primary output from SappyWCF_windowsService (Active)"
+            "Name" = "8:Primary output from SappyWCF_windowsService_Testes (Active)"
             "Condition" = "8:"
-            "Object" = "8:_2EEE5FF44EF447768013487284937C84"
+            "Object" = "8:_FF55725410094ADC85B1164B231701CF"
             "FileType" = "3:2"
             "InstallAction" = "3:2"
             "Arguments" = "8:"
             "EntryPoint" = "8:"
             "Sequence" = "3:1"
-            "Identifier" = "8:_DC0CDF0A_BCA7_471D_90A1_93A4FC0C5ED5"
+            "Identifier" = "8:_3FBF32A8_AB68_427E_ADF8_879EDE5E487A"
+            "InstallerClass" = "11:TRUE"
+            "CustomActionData" = "8:"
+            }
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_2F7B3A624EA44529AAE42399A5DB36AC"
+            {
+            "Name" = "8:Primary output from SappyWCF_windowsService_Testes (Active)"
+            "Condition" = "8:"
+            "Object" = "8:_FF55725410094ADC85B1164B231701CF"
+            "FileType" = "3:2"
+            "InstallAction" = "3:1"
+            "Arguments" = "8:"
+            "EntryPoint" = "8:"
+            "Sequence" = "3:1"
+            "Identifier" = "8:_84E37756_397C_4820_889F_C15F58996DB5"
+            "InstallerClass" = "11:TRUE"
+            "CustomActionData" = "8:"
+            }
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_C7E41B8947AA4A088AF25E24D275241D"
+            {
+            "Name" = "8:Primary output from SappyWCF_windowsService_Testes (Active)"
+            "Condition" = "8:"
+            "Object" = "8:_FF55725410094ADC85B1164B231701CF"
+            "FileType" = "3:2"
+            "InstallAction" = "3:4"
+            "Arguments" = "8:"
+            "EntryPoint" = "8:"
+            "Sequence" = "3:1"
+            "Identifier" = "8:_AD204194_8B55_4DC8_B721_AA350EDF0097"
             "InstallerClass" = "11:TRUE"
             "CustomActionData" = "8:"
             }
@@ -972,6 +972,37 @@
                     }
                 }
             "SourcePath" = "8:CrystalDecisions.Enterprise.PluginManager.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_E544079D5467476C88E6DACE18366626"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_3AB7621C07FC9DBA6CEB171A2004C8C7"
+            {
+            "AssemblyRegister" = "3:1"
+            "AssemblyIsInGAC" = "11:FALSE"
+            "AssemblyAsmDisplayName" = "8:Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL"
+                "ScatterAssemblies"
+                {
+                    "_3AB7621C07FC9DBA6CEB171A2004C8C7"
+                    {
+                    "Name" = "8:Newtonsoft.Json.dll"
+                    "Attributes" = "3:512"
+                    }
+                }
+            "SourcePath" = "8:Newtonsoft.Json.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_E544079D5467476C88E6DACE18366626"
@@ -1183,37 +1214,6 @@
                     }
                 }
             "SourcePath" = "8:CrystalDecisions.CrystalReports.Engine.dll"
-            "TargetName" = "8:"
-            "Tag" = "8:"
-            "Folder" = "8:_E544079D5467476C88E6DACE18366626"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:TRUE"
-            "IsolateTo" = "8:"
-            }
-            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_67B94F3FE0D67A7598CA3C7F17D5B3D8"
-            {
-            "AssemblyRegister" = "3:1"
-            "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL"
-                "ScatterAssemblies"
-                {
-                    "_67B94F3FE0D67A7598CA3C7F17D5B3D8"
-                    {
-                    "Name" = "8:Newtonsoft.Json.dll"
-                    "Attributes" = "3:512"
-                    }
-                }
-            "SourcePath" = "8:Newtonsoft.Json.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_E544079D5467476C88E6DACE18366626"
@@ -1541,20 +1541,20 @@
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
-            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_EAE78CD81C8C6EBAF0E8014A7B85E474"
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_F4767AC0FA1189D1D5B153AC2A68168A"
             {
             "AssemblyRegister" = "3:1"
             "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:SappyWCF_implementation, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL"
+            "AssemblyAsmDisplayName" = "8:CrystalDecisions.ReportAppServer.CommonControls, Version=14.0.3500.0, Culture=neutral, PublicKeyToken=692fbea5521e1304, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
-                    "_EAE78CD81C8C6EBAF0E8014A7B85E474"
+                    "_F4767AC0FA1189D1D5B153AC2A68168A"
                     {
-                    "Name" = "8:SappyWCF_implementation.dll"
+                    "Name" = "8:CrystalDecisions.ReportAppServer.CommonControls.dll"
                     "Attributes" = "3:512"
                     }
                 }
-            "SourcePath" = "8:SappyWCF_implementation.dll"
+            "SourcePath" = "8:CrystalDecisions.ReportAppServer.CommonControls.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_E544079D5467476C88E6DACE18366626"
@@ -1572,20 +1572,20 @@
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
-            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_F4767AC0FA1189D1D5B153AC2A68168A"
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_F4C9FDB1F41DA88BFEF0F502DC04A7A1"
             {
             "AssemblyRegister" = "3:1"
             "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:CrystalDecisions.ReportAppServer.CommonControls, Version=14.0.3500.0, Culture=neutral, PublicKeyToken=692fbea5521e1304, processorArchitecture=MSIL"
+            "AssemblyAsmDisplayName" = "8:SappyWCF_implementation, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
-                    "_F4767AC0FA1189D1D5B153AC2A68168A"
+                    "_F4C9FDB1F41DA88BFEF0F502DC04A7A1"
                     {
-                    "Name" = "8:CrystalDecisions.ReportAppServer.CommonControls.dll"
+                    "Name" = "8:SappyWCF_implementation.dll"
                     "Attributes" = "3:512"
                     }
                 }
-            "SourcePath" = "8:CrystalDecisions.ReportAppServer.CommonControls.dll"
+            "SourcePath" = "8:SappyWCF_implementation.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_E544079D5467476C88E6DACE18366626"
@@ -2210,9 +2210,9 @@
         }
         "ProjectOutput"
         {
-            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_2EEE5FF44EF447768013487284937C84"
+            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_FF55725410094ADC85B1164B231701CF"
             {
-            "SourcePath" = "8:..\\SappyWCF_windowsService\\obj\\x86\\Release\\SappyWCF_windowsService.exe"
+            "SourcePath" = "8:..\\SappyWCF_windowsService_Testes\\obj\\x86\\Debug\\SappyWCF_windowsService_Testes.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_E544079D5467476C88E6DACE18366626"
@@ -2232,7 +2232,7 @@
             "ProjectOutputGroupRegister" = "3:1"
             "OutputConfiguration" = "8:"
             "OutputGroupCanonicalName" = "8:Built"
-            "OutputProjectGuid" = "8:{9111D467-0904-4917-AF39-F200EC875EF2}"
+            "OutputProjectGuid" = "8:{799259E4-45B3-47BA-A935-BED990BB6E5A}"
             "ShowKeyOutput" = "11:TRUE"
                 "ExcludeFilters"
                 {
