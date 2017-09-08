@@ -85,8 +85,8 @@ class SBOContext : IDisposable
 
 
         var sqlDetailNET = "SELECT T1.ITEMCODE, T1.WHSCODE, SUM(T1.QTSTK) AS QTSTK";
-        sqlDetailNET += "\n , SUM(CASE WHEN T1.BONUS_NAP=1 THEN T1.PRICE*T1.QTSTK ELSE T1.LINETOTAL END) AS TRANSCOST";
-        sqlDetailNET += "\n , SUM(T1.NETTOTAL) AS TRANSCOSTNET";
+        sqlDetailNET += "\n , SUM(T1.LINETOTAL + COALESCE(CASE WHEN T1.BONUS_NAP=1 THEN T1.LINETOTALBONUS ELSE 0 END,0) ) AS TRANSCOST";
+        sqlDetailNET += "\n , SUM(T1.NETTOTAL+ COALESCE(CASE WHEN T1.BONUS_NAP=1 THEN T1.NETTOTALBONUS ELSE 0 END,0) ) AS TRANSCOSTNET";
         sqlDetailNET += "\n , OITW.\"OnHand\"";
         sqlDetailNET += "\n , OITW.\"AvgPrice\"";
         sqlDetailNET += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
@@ -130,50 +130,117 @@ class SBOContext : IDisposable
 
             foreach (DataRow line in detailsDt.Rows)
             {
-                if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
+                var QTCX = (double)(decimal)line["QTCX"];   // Num caixas/pack
+                var QTPK = (double)(decimal)line["QTPK"];
+                var QTSTK = (double)(decimal)line["QTSTK"];
+                var QTBONUS = (double)(decimal)line["QTBONUS"];
                 var BONUS_NAP = (short)line["BONUS_NAP"];
 
-                newDoc.Lines.ItemCode = (string)line["ITEMCODE"];
-                newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
-                newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
-                newDoc.Lines.Factor1 = (double)(decimal)line["QTCX"];   // Num caixas/pack
-                newDoc.Lines.Factor2 = (double)(decimal)line["QTPK"];   // Qdd por Caixa/pack 
-                //newDoc.Lines.InventoryQuantity = (double)(decimal)line["QTSTK"]; //Definir sobrepoe os fatores 1 e 2
-                newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
-                newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
-                newDoc.Lines.VatGroup = (string)line["VATGROUP"];
-                newDoc.Lines.TaxCode = (string)line["VATGROUP"];
-                newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
-
-
-                // Estes campos atualmente estão ao nivel de cabeçalho, mas são guardados no documento nas linhas,
-                // porque preve-se que no futuro esta tenha que ser uma informação linha a linha.
-                newDoc.Lines.UserFields.Fields.Item("U_apyDFIN").Value = (string)header["DESCFIN"];
-                newDoc.Lines.UserFields.Fields.Item("U_apyDDEB").Value = (string)header["DESCDEB"];
-                newDoc.Lines.UserFields.Fields.Item("U_apyDFINAC").Value = (short)header["DESCFINAC"] == 1 ? "Y" : "N";
-                newDoc.Lines.UserFields.Fields.Item("U_apyDDEBAC").Value = (short)header["DESCDEBAC"] == 1 ? "Y" : "N";
-                newDoc.Lines.UserFields.Fields.Item("U_apyDDEBPER").Value = (string)header["DESCDEBPER"];
-
-                newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = (double)(decimal)line["NETPRICE"];
-                newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = (double)(decimal)line["NETTOTAL"];
-
-                if (BONUS_NAP == 0)
+                if (QTSTK != 0)
                 {
-                    newDoc.Lines.DiscountPercent = (double)(decimal)line["DISCOUNT"];
+                    if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
+                    newDoc.Lines.ItemCode = (string)line["ITEMCODE"];
+                    newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
+                    newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
+                    newDoc.Lines.Factor1 = QTCX;   // Num caixas/pack
+                    newDoc.Lines.Factor2 = QTPK;   // Qdd por Caixa/pack 
+                    //newDoc.Lines.InventoryQuantity = (double)(decimal)line["QTSTK"]; //Definir sobrepoe os fatores 1 e 2
+                    newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
+                    newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
+                    newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                    newDoc.Lines.TaxCode = (string)line["VATGROUP"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
+
+                    // Estes campos atualmente estão ao nivel de cabeçalho, mas são guardados no documento nas linhas,
+                    // porque preve-se que no futuro esta tenha que ser uma informação linha a linha.
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDFIN").Value = (string)header["DESCFIN"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDDEB").Value = (string)header["DESCDEB"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDFINAC").Value = (short)header["DESCFINAC"] == 1 ? "Y" : "N";
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDDEBAC").Value = (short)header["DESCDEBAC"] == 1 ? "Y" : "N";
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDDEBPER").Value = (string)header["DESCDEBPER"];
+
+                    newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = (double)(decimal)line["NETPRICE"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = (double)(decimal)line["NETTOTAL"];
+
                     newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
                     newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
                 }
-                else
+                if (QTBONUS != 0)
                 {
-                    // deixa que o SAP calcule o LineTotal na linha atual e na de Bonus
+                    //    double NRCXBONUS = QTBONUS;
+                    //    double QTPKBONUS = 1;
+
+                    //    if (QTBONUS % QTPK == 0)
+                    //    {
+                    //        // Usar grupagem quando é possível
+                    //        NRCXBONUS = QTBONUS / QTPK;
+                    //        QTPKBONUS = QTPK;
+                    //    }
+
 
                     if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
-                    newDoc.Lines.ItemCode = "BONUS";
+                    newDoc.Lines.ItemCode = (string)line["ITEMCODE"];
                     newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
-                    newDoc.Lines.Factor1 = -1 * (double)(decimal)line["QTCX"];      // Num caixas/pack
-                    newDoc.Lines.Factor2 = (double)(decimal)line["QTPK"];           // Qdd por Caixa/pack
+                    newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
+                    newDoc.Lines.Quantity = QTBONUS;
                     newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
+                    newDoc.Lines.VatGroup = (string)line["VATGROUP"];
                     newDoc.Lines.TaxCode = (string)line["VATGROUP"];
+                    if (QTSTK != 0) newDoc.Lines.UserFields.Fields.Item("U_apyREFLIN").Value = newDoc.Lines.Count - 2;
+
+                    newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
+
+                    // Estes campos atualmente estão ao nivel de cabeçalho, mas são guardados no documento nas linhas,
+                    // porque preve-se que no futuro esta tenha que ser uma informação linha a linha.
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDFIN").Value = (string)header["DESCFIN"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDDEB").Value = (string)header["DESCDEB"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDFINAC").Value = (short)header["DESCFINAC"] == 1 ? "Y" : "N";
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDDEBAC").Value = (short)header["DESCDEBAC"] == 1 ? "Y" : "N";
+                    newDoc.Lines.UserFields.Fields.Item("U_apyDDEBPER").Value = (string)header["DESCDEBPER"];
+
+                    if (BONUS_NAP != 1)
+                    {
+                        newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = "BONUS";
+                        newDoc.Lines.DiscountPercent = 100;
+                        newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = 0;
+                        newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = 0;
+                    }
+                    else
+                    {
+                        newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTALBONUS"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = (double)(decimal)line["NETPRICE"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = (double)(decimal)line["NETTOTALBONUS"];
+
+                        if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
+                        newDoc.Lines.ItemCode = "BONUS";
+                        newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
+                        newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
+                        newDoc.Lines.Quantity = -1 * QTBONUS;
+                        newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
+                        newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                        newDoc.Lines.TaxCode = (string)line["VATGROUP"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
+                        newDoc.Lines.LineTotal = -1 * (double)(decimal)line["LINETOTALBONUS"];
+                        if (QTSTK != 0)
+                            newDoc.Lines.UserFields.Fields.Item("U_apyREFLIN").Value = newDoc.Lines.Count - 3; //manter refrêmncia com a linha principal
+                        else
+                            newDoc.Lines.UserFields.Fields.Item("U_apyREFLIN").Value = newDoc.Lines.Count - 2; // se é só oferta a linha é a da oferta
+
+                        newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
+
+                        // Estes campos atualmente estão ao nivel de cabeçalho, mas são guardados no documento nas linhas,
+                        // porque preve-se que no futuro esta tenha que ser uma informação linha a linha.
+                        newDoc.Lines.UserFields.Fields.Item("U_apyDFIN").Value = (string)header["DESCFIN"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyDDEB").Value = (string)header["DESCDEB"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyDFINAC").Value = (short)header["DESCFINAC"] == 1 ? "Y" : "N";
+                        newDoc.Lines.UserFields.Fields.Item("U_apyDDEBAC").Value = (short)header["DESCDEBAC"] == 1 ? "Y" : "N";
+                        newDoc.Lines.UserFields.Fields.Item("U_apyDDEBPER").Value = (string)header["DESCDEBPER"];
+
+                        newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = (double)(decimal)line["NETPRICE"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = -1 * (double)(decimal)line["NETTOTALBONUS"];
+                    }
+
                 }
 
             }
