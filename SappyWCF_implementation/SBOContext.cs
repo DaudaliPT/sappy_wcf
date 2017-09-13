@@ -56,7 +56,7 @@ class SBOContext : IDisposable
         }
     }
 
-    internal AddDocResult Confirmar_SAPPY_DOC(string objCode, int draftId, double expectedTotal)
+    internal AddDocResult SAPDOC_FROM_SAPPY_DRAFT(DocActions action, string objCode, int draftId, double expectedTotal)
     {
 
         int priceDecimals = 6;
@@ -65,6 +65,7 @@ class SBOContext : IDisposable
             var ai = s.GetAdminInfo();
             priceDecimals = ai.PriceAccuracy;
         }
+
         var sqlHeader = "SELECT T0.* ";
         sqlHeader += "\n , OCPR.\"CntctCode\"";
         sqlHeader += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC T0";
@@ -82,7 +83,6 @@ class SBOContext : IDisposable
         sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OITW OITW on T1.ITEMCODE = OITW.\"ItemCode\" AND T1.WHSCODE = OITW.\"WhsCode\"";
         sqlDetail += "\n WHERE T1.ID =" + draftId;
         sqlDetail += "\n ORDER BY T1.LINENUM";
-
 
         var sqlDetailNET = "SELECT T1.ITEMCODE, T1.WHSCODE, SUM(T1.QTSTK) AS QTSTK";
         sqlDetailNET += "\n , SUM(T1.LINETOTAL + COALESCE(CASE WHEN T1.BONUS_NAP=1 THEN T1.LINETOTALBONUS ELSE 0 END,0) ) AS TRANSCOST";
@@ -106,10 +106,9 @@ class SBOContext : IDisposable
             DataRow header = headerDt.Rows[0];
 
             int objType = Convert.ToInt32(header["OBJTYPE"]);
-            bool sujRevalorizacaoNET = (objType == 18);
+            bool sujRevalorizacaoNET = (action == DocActions.ADD && objType == 18);
 
             if (objType.ToString() != objCode) throw new Exception("objCode " + objCode + " is diferent of " + objType.ToString());
-
 
             SAPbobsCOM.Documents newDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
             newDoc.Series = (int)header["DOCSERIES"];
@@ -147,7 +146,7 @@ class SBOContext : IDisposable
                     //newDoc.Lines.InventoryQuantity = (double)(decimal)line["QTSTK"]; //Definir sobrepoe os fatores 1 e 2
                     newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
                     newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
-                    newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                    //newDoc.Lines.VatGroup = (string)line["VATGROUP"];
                     newDoc.Lines.TaxCode = (string)line["VATGROUP"];
                     newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
 
@@ -184,7 +183,7 @@ class SBOContext : IDisposable
                     newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
                     newDoc.Lines.Quantity = QTBONUS;
                     newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
-                    newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                    //newDoc.Lines.VatGroup = (string)line["VATGROUP"];
                     newDoc.Lines.TaxCode = (string)line["VATGROUP"];
                     if (QTSTK != 0) newDoc.Lines.UserFields.Fields.Item("U_apyREFLIN").Value = newDoc.Lines.Count - 2;
 
@@ -218,7 +217,7 @@ class SBOContext : IDisposable
                         newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
                         newDoc.Lines.Quantity = -1 * QTBONUS;
                         newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
-                        newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                        //newDoc.Lines.VatGroup = (string)line["VATGROUP"];
                         newDoc.Lines.TaxCode = (string)line["VATGROUP"];
                         newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
                         newDoc.Lines.LineTotal = -1 * (double)(decimal)line["LINETOTALBONUS"];
@@ -252,6 +251,9 @@ class SBOContext : IDisposable
                 newDoc.RoundingDiffAmount = (double)(decimal)header["ROUNDVAL"];
             }
 
+            if ((string)header["FORCEFIELD"] == "EXTRADISC" ||
+                (string)header["FORCEFIELD"] == "EXTRADISCPERC") newDoc.DiscountPercent = (double)(decimal)header["EXTRADISCPERC"];
+            if ((string)header["FORCEFIELD"] == "DOCTOTAL") newDoc.DocTotal = (double)(decimal)header["DOCTOTAL"];
 
 
 
@@ -381,9 +383,8 @@ class SBOContext : IDisposable
                 }
 
                 AddDocResult result = new AddDocResult();
-                if (newDoc.DocTotal != expectedTotal)
+                if (action == DocActions.ADD && newDoc.DocTotal != expectedTotal)
                 {
-
                     //log the xml to allow easier debug
                     var xml = newDoc.GetAsXML();
                     Logger.Log.Debug(xml);
@@ -442,16 +443,22 @@ class SBOContext : IDisposable
                     }
                 }
 
+                if (action == DocActions.ADD)
+                {
+                    this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
 
-                this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
-
-                //APGAR OS REGISTOS
-                dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC WHERE ID =" + draftId);
-                dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES WHERE ID =" + draftId);
-
+                    //APGAR OS REGISTOS
+                    dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC WHERE ID =" + draftId);
+                    dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES WHERE ID =" + draftId);
+                }
                 result.DocEntry = newDoc.DocEntry;
                 result.DocNum = newDoc.DocNum;
+
                 result.DocTotal = newDoc.DocTotal;
+                result.DiscountPercent = newDoc.DiscountPercent;
+                result.TotalDiscount = newDoc.TotalDiscount;
+                result.VatSum = newDoc.VatSum;
+                result.RoundingDiffAmount = newDoc.RoundingDiffAmount;
                 return result;
             }
             finally
@@ -460,4 +467,94 @@ class SBOContext : IDisposable
             }
         }
     }
+
+    internal AddDocResult SAPDOC_PATCH_WITH_SAPPY_CHANGES(string objCode, int docEntry)
+    {
+
+        int objType = Convert.ToInt32(objCode);
+        if (objType.ToString() != objCode) throw new Exception("objCode " + objCode + " is diferent of " + objType.ToString());
+
+        int priceDecimals = 6;
+        {
+            var s = this.company.GetCompanyService();
+            var ai = s.GetAdminInfo();
+            priceDecimals = ai.PriceAccuracy;
+        }
+
+        var sqlHeader = "SELECT * ";
+        sqlHeader += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_EDIT";
+        sqlHeader += "\n WHERE OBJTYPE  ='" + objCode + "'";
+        sqlHeader += "\n   AND DOCENTRY = " + docEntry;
+        using (HelperOdbc dataLayer = new HelperOdbc())
+        using (DataTable headerChanges = dataLayer.Execute(sqlHeader))
+        {
+
+            if (headerChanges.Rows.Count == 0)
+                throw new Exception("Não foi há nenhuma alteração a fazer ao documento");
+
+
+            SAPbobsCOM.Documents sapDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
+
+            if (sapDoc.GetByKey(docEntry) == false)
+                throw new Exception("Não foi possível obter o documento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+            foreach (DataRow change in headerChanges.Rows)
+            {
+                string field = (string)change["FIELDNAME"];
+                string value = (string)change["FIELDVALUE"];
+
+                if (field == "DOCDUEDATE") sapDoc.DocDueDate = DateTime.ParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                if (field == "COMMENTS") sapDoc.Comments = value;
+                if (field == "HASINCONF") sapDoc.UserFields.Fields.Item("U_apyINCONF").Value = ("true,1".Contains(value.ToLower()) ? "Y" : "N");
+
+            }
+
+
+            try
+            {
+                this.company.StartTransaction();
+
+                if (sapDoc.Update() != 0)
+                {
+                    var ex = new Exception("Não foi possível gravar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                    //log the xml to allow easier debug
+                    var xml = sapDoc.GetAsXML();
+                    Logger.Log.Debug(xml, ex);
+
+                    throw ex;
+                }
+                else
+                {
+                    if (sapDoc.GetByKey(docEntry) == false)
+                    {
+                        throw new Exception("Não foi obter o documento atualizado em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    }
+                }
+
+                AddDocResult result = new AddDocResult();
+
+
+                this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+
+                //APGAR OS REGISTOS DE MODIFICAÇÃO
+                dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_EDIT WHERE OBJTYPE  ='" + objCode + "' AND DOCENTRY = " + docEntry);
+
+                result.DocEntry = sapDoc.DocEntry;
+                result.DocNum = sapDoc.DocNum;
+
+                result.DocTotal = sapDoc.DocTotal;
+                result.DiscountPercent = sapDoc.DiscountPercent;
+                result.TotalDiscount = sapDoc.TotalDiscount;
+                result.VatSum = sapDoc.VatSum;
+                result.RoundingDiffAmount = sapDoc.RoundingDiffAmount;
+                return result;
+            }
+            finally
+            {
+                if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+            }
+        }
+    }
+
 }

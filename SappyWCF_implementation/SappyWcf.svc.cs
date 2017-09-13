@@ -114,7 +114,7 @@ public class SappyWcf : I_SappyWcf
 
 
     // [STAOperationBehavior]
-    public string AddDoc(string empresa, string objCode, string draftId,string expectedTotal)
+    public string AddDoc(string empresa, string objCode, string draftId, string expectedTotal)
     {
         Result result = new Result();
         string sInfo = "AddDoc";
@@ -124,16 +124,16 @@ public class SappyWcf : I_SappyWcf
 
 
         var sboCon = SBOHandler.DIAPIConnections[empresa];
-         
+
         if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
         {
             try
             {
                 Logger.LogInvoke(sInfo, "");
                 int Id = Convert.ToInt32(draftId);
-                double ExpectedTotal = Convert.ToDouble(expectedTotal,CultureInfo.InvariantCulture);
+                double ExpectedTotal = Convert.ToDouble(expectedTotal, CultureInfo.InvariantCulture);
 
-                result.result = sboCon.Confirmar_SAPPY_DOC(objCode, Id, ExpectedTotal);
+                result.result = sboCon.SAPDOC_FROM_SAPPY_DRAFT(DocActions.ADD, objCode, Id, ExpectedTotal);
             }
             catch (System.Exception ex)
             {
@@ -145,12 +145,95 @@ public class SappyWcf : I_SappyWcf
                 Monitor.Exit(sboCon);
             }
         }
-        else {         
-            result.error =  "Busy, please try again later...";
+        else
+        {
+            result.error = "Busy, please try again later...";
         }
 
         Logger.LogResult(sInfo, result);
-        return Logger.FormatToJson( result);
+        return Logger.FormatToJson(result);
+
+    }
+
+    public string SimulateDoc(string empresa, string objCode, string draftId)
+    {
+        Result result = new Result();
+        string sInfo = "SimulateDoc";
+
+        if (!SBOHandler.DIAPIConnections.ContainsKey(empresa))
+            result.error = "Empresa não configurada ou inexistente.";
+
+
+        var sboCon = SBOHandler.DIAPIConnections[empresa];
+
+        if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
+        {
+            try
+            {
+                Logger.LogInvoke(sInfo, "");
+                int Id = Convert.ToInt32(draftId);
+
+                result.result = sboCon.SAPDOC_FROM_SAPPY_DRAFT(DocActions.SIMULATE, objCode, Id, 0);
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Log.Error(ex.Message, ex);
+                result.error = ex.Message;
+            }
+            finally
+            {
+                Monitor.Exit(sboCon);
+            }
+        }
+        else
+        {
+            result.error = "Busy, please try again later...";
+        }
+
+        Logger.LogResult(sInfo, result);
+        return Logger.FormatToJson(result);
+
+    }
+
+
+
+    public string PatchDoc(string empresa, string objCode, string docEntry)
+    {
+        Result result = new Result();
+        string sInfo = "PatchDoc";
+
+        if (!SBOHandler.DIAPIConnections.ContainsKey(empresa))
+            result.error = "Empresa não configurada ou inexistente.";
+
+
+        var sboCon = SBOHandler.DIAPIConnections[empresa];
+
+        if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
+        {
+            try
+            {
+                Logger.LogInvoke(sInfo, "");
+                int DocEntry = Convert.ToInt32(docEntry);
+
+                result.result = sboCon.SAPDOC_PATCH_WITH_SAPPY_CHANGES(objCode, DocEntry);
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Log.Error(ex.Message, ex);
+                result.error = ex.Message;
+            }
+            finally
+            {
+                Monitor.Exit(sboCon);
+            }
+        }
+        else
+        {
+            result.error = "Busy, please try again later...";
+        }
+
+        Logger.LogResult(sInfo, result);
+        return Logger.FormatToJson(result);
 
     }
 }

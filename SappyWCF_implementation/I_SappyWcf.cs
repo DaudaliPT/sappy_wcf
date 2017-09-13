@@ -46,5 +46,20 @@ public interface I_SappyWcf
         BodyStyle = WebMessageBodyStyle.WrappedRequest,
         UriTemplate = "{empresa}/AddDoc/{objCode}/{draftId}?expectedTotal={expectedTotal}")]
     string AddDoc(string empresa, string objCode, string draftId, string expectedTotal);
+    
+    [OperationContract]
+    [WebInvoke(Method = "POST",
+        RequestFormat = WebMessageFormat.Json,
+        ResponseFormat = WebMessageFormat.Json,
+        BodyStyle = WebMessageBodyStyle.WrappedRequest,
+        UriTemplate = "{empresa}/SimulateDoc/{objCode}/{draftId}")]
+    string SimulateDoc(string empresa, string objCode, string draftId);
 
+    [OperationContract]
+    [WebInvoke(Method = "PATCH",
+        RequestFormat = WebMessageFormat.Json,
+        ResponseFormat = WebMessageFormat.Json,
+        BodyStyle = WebMessageBodyStyle.WrappedRequest,
+        UriTemplate = "{empresa}/PatchDoc/{objCode}/{docEntry}")]
+    string PatchDoc(string empresa, string objCode, string docEntry);
 }
