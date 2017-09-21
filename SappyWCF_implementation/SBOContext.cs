@@ -20,7 +20,7 @@ class SBOContext : IDisposable
         this.company = new SAPbobsCOM.Company();
         this.company.DbServerType = SAPbobsCOM.BoDataServerTypes.dst_HANADB;
         this.company.UseTrusted = false;
-        this.company.language = SAPbobsCOM.BoSuppLangs.ln_English;
+        this.company.language = SAPbobsCOM.BoSuppLangs.ln_Portuguese;
         this.company.LicenseServer = SappyWCF_implementation.Properties.Settings.Default.LICENCESERVER;
         this.company.Server = SappyWCF_implementation.Properties.Settings.Default.DBSERVER;
         this.company.DbUserName = SappyWCF_implementation.Properties.Settings.Default.DBUSER;
@@ -505,8 +505,7 @@ class SBOContext : IDisposable
 
                 if (field == "DOCDUEDATE") sapDoc.DocDueDate = DateTime.ParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
                 if (field == "COMMENTS") sapDoc.Comments = value;
-                if (field == "HASINCONF") sapDoc.UserFields.Fields.Item("U_apyINCONF").Value = ("true,1".Contains(value.ToLower()) ? "Y" : "N");
-
+                if (field == "HASINCONF")sapDoc.UserFields.Fields.Item("U_apyINCONF").Value = (value!="" && "true,1".Contains(value.ToLower()) ? "Y" : "N");
             }
 
 
