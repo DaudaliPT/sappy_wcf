@@ -153,7 +153,7 @@ class HelperCrystalReports : IDisposable
         {
             var thisVal = par.Value;
             ParameterField rptPar = this.rptDoc.ParameterFields.Find(par.Name, "");
-
+            if (rptPar == null) continue;
 
             if (rptPar.PromptingType == DiscreteOrRangeKind.DiscreteValue)
             {

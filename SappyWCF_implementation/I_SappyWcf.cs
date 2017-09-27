@@ -62,4 +62,12 @@ public interface I_SappyWcf
         BodyStyle = WebMessageBodyStyle.WrappedRequest,
         UriTemplate = "{empresa}/PatchDoc/{objCode}/{docEntry}")]
     string PatchDoc(string empresa, string objCode, string docEntry);
+
+    [OperationContract]
+    [WebInvoke(Method = "GET",
+        ResponseFormat = WebMessageFormat.Json,
+        BodyStyle = WebMessageBodyStyle.Bare,
+        UriTemplate = "printers")]
+    string GetPrinters();
+
 }

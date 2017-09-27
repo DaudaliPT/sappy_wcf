@@ -73,8 +73,8 @@ public class SappyWcf : I_SappyWcf
 
                 CrystalDecisions.ReportAppServer.Controllers.PrintReportOptions popt = new CrystalDecisions.ReportAppServer.Controllers.PrintReportOptions();
                 popt.PrinterName = SappyWCF_implementation.Properties.Settings.Default.SAPPY001_PrinterName;
-                crw.rptDoc.ReportClientDocument.PrintOutputController.PrintReport(popt);
 
+                crw.rptDoc.ReportClientDocument.PrintOutputController.PrintReport(popt);
 
                 return true;
             }
@@ -235,5 +235,24 @@ public class SappyWcf : I_SappyWcf
         Logger.LogResult(sInfo, result);
         return Logger.FormatToJson(result);
 
+    }
+
+    public string GetPrinters()
+    { 
+        string sInfo = "GetPrinters"; 
+        try
+        {
+            Logger.LogInvoke(sInfo, ""); 
+
+            WebOperationContext.Current.OutgoingResponse.Format = WebMessageFormat.Json;
+            string jsonString = new JavaScriptSerializer().Serialize(System.Drawing.Printing.PrinterSettings.InstalledPrinters);
+            return jsonString; 
+        }
+        catch (System.Exception ex)
+        {
+            Logger.Log.Error(ex.Message, ex);
+
+            throw new WebFaultException<string>(ex.ToString(), HttpStatusCode.NotFound);
+        }
     }
 }
