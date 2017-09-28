@@ -46,7 +46,7 @@ public interface I_SappyWcf
         BodyStyle = WebMessageBodyStyle.WrappedRequest,
         UriTemplate = "{empresa}/AddDoc/{objCode}/{draftId}?expectedTotal={expectedTotal}")]
     string AddDoc(string empresa, string objCode, string draftId, string expectedTotal);
-    
+
     [OperationContract]
     [WebInvoke(Method = "POST",
         RequestFormat = WebMessageFormat.Json,
@@ -64,10 +64,14 @@ public interface I_SappyWcf
     string PatchDoc(string empresa, string objCode, string docEntry);
 
     [OperationContract]
-    [WebInvoke(Method = "GET",
-        ResponseFormat = WebMessageFormat.Json,
-        BodyStyle = WebMessageBodyStyle.Bare,
-        UriTemplate = "printers")]
+    [WebInvoke(Method = "GET", UriTemplate = "printers", ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
     string GetPrinters();
 
+    [OperationContract]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/adiantamento", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
+    string PostAdiantamento(PostAdiantamentoInput body, string empresa);
+
+    [OperationContract]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/despesa", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
+    string PostDespesa(PostDespesaInput body, string empresa);
 }

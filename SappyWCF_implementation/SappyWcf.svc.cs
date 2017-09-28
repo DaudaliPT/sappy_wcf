@@ -12,6 +12,7 @@ using CrystalDecisions.Shared;
 using System.Drawing.Printing;
 using WcfSappy.STAThread;
 using System.Threading;
+using System.Text;
 
 
 
@@ -254,5 +255,78 @@ public class SappyWcf : I_SappyWcf
 
             throw new WebFaultException<string>(ex.ToString(), HttpStatusCode.NotFound);
         }
+    }
+
+    public string PostAdiantamento(PostAdiantamentoInput body, string empresa)
+    {
+        Result result = new Result();
+        string sInfo = "PostAdiantamento";
+
+        if (!SBOHandler.DIAPIConnections.ContainsKey(empresa))
+            result.error = "Empresa não configurada ou inexistente."; 
+        var sboCon = SBOHandler.DIAPIConnections[empresa];
+
+        if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
+        {
+            try
+            {
+                Logger.LogInvoke(sInfo, "");
+
+                result.result = sboCon.ADD_ADIANTAMENTO_PARA_DESPESAS(body);
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Log.Error(ex.Message, ex);
+                result.error = ex.Message;
+            }
+            finally
+            {
+                Monitor.Exit(sboCon);
+            }
+        }
+        else
+        {
+            result.error = "Busy, please try again later...";
+        }
+
+        Logger.LogResult(sInfo, result);
+        return Logger.FormatToJson(result);
+    }
+
+
+    public string PostDespesa(PostDespesaInput body, string empresa)
+    {
+        Result result = new Result();
+        string sInfo = "PostDespesa";
+
+        if (!SBOHandler.DIAPIConnections.ContainsKey(empresa))
+            result.error = "Empresa não configurada ou inexistente.";
+        var sboCon = SBOHandler.DIAPIConnections[empresa];
+
+        if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
+        {
+            try
+            {
+                Logger.LogInvoke(sInfo, "");
+
+                result.result = sboCon.ADD_DESPESA(body);
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Log.Error(ex.Message, ex);
+                result.error = ex.Message;
+            }
+            finally
+            {
+                Monitor.Exit(sboCon);
+            }
+        }
+        else
+        {
+            result.error = "Busy, please try again later...";
+        }
+
+        Logger.LogResult(sInfo, result);
+        return Logger.FormatToJson(result);
     }
 }
