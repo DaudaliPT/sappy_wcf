@@ -23,10 +23,24 @@ public static class Logger
     /// </summary>        
     public static log4net.ILog Log = log4net.LogManager.GetLogger("LOGFILE");// MethodBase.GetCurrentMethod().DeclaringType);
 
-    internal static void LogInvoke(string procName, string request1, object request)
+
+    internal static void LogInvoke(string procName, string request1, object request2, object request3, object request4)
     {
         Log.Info("Invoked " + procName + " on DB server: " + SappyWCF_implementation.Properties.Settings.Default.DBSERVER);
-        Log.Debug("Invoked " + procName + "((request: " + request1 + ", " + FormatToJson(request) + ") on DB server: " + SappyWCF_implementation.Properties.Settings.Default.DBSERVER);
+        Log.Debug("Invoked " + procName + "((request: " + request1 + ", " + FormatToJson(request2) + ", " + FormatToJson(request3) + ", " + FormatToJson(request4) + ") on DB server: " + SappyWCF_implementation.Properties.Settings.Default.DBSERVER);
+    }
+
+
+    internal static void LogInvoke(string procName, string request1, object request2, object request3)
+    {
+        Log.Info("Invoked " + procName + " on DB server: " + SappyWCF_implementation.Properties.Settings.Default.DBSERVER);
+        Log.Debug("Invoked " + procName + "((request: " + request1 + ", " + FormatToJson(request2) + ", " + FormatToJson(request3) + ") on DB server: " + SappyWCF_implementation.Properties.Settings.Default.DBSERVER);
+    }
+
+    internal static void LogInvoke(string procName, string request1, object request2)
+    {
+        Log.Info("Invoked " + procName + " on DB server: " + SappyWCF_implementation.Properties.Settings.Default.DBSERVER);
+        Log.Debug("Invoked " + procName + "((request: " + request1 + ", " + FormatToJson(request2) + ") on DB server: " + SappyWCF_implementation.Properties.Settings.Default.DBSERVER);
     }
 
     public static void LogInvoke(string procName, object request)

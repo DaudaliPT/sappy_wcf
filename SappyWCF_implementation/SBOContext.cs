@@ -620,7 +620,75 @@ class SBOContext : IDisposable
         }
 
     }
-    
+
+     
+    internal AddDocResult FECHAR_ADIANTAMENTO_PARA_DESPESAS(PostFecharAdiantamentoInput data)
+    {
+        
+        // Documento para devolução do resto do adiantamento para conta de diferenças
+        SAPbobsCOM.Payments devAdiant = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oIncomingPayments);
+        devAdiant.DocType = SAPbobsCOM.BoRcptTypes.rSupplier;
+        devAdiant.CardCode = data.CardCode;
+        devAdiant.ContactPersonCode = data.CntctCode;
+        devAdiant.CounterReference = data.CounterRef;
+        devAdiant.Remarks = data.Comments;
+        devAdiant.TransferAccount = data.CAIXA_DIFERENCAS; 
+        devAdiant.TransferSum = data.VALOR_PENDENTE;
+        devAdiant.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)data.TransType;
+        if (data.TransType == 46)
+        {
+            devAdiant.Invoices.DocEntry = data.TransId;
+            devAdiant.Invoices.DocLine = data.Line_ID;
+        }
+        else
+        {
+            devAdiant.Invoices.DocEntry = data.CreatedBy;
+        }
+        devAdiant.Invoices.SumApplied = data.VALOR_PENDENTE;
+
+        try
+        {
+            this.company.StartTransaction();
+
+            if (devAdiant.Add() != 0)
+            {
+                var ex = new Exception("Gravar recebimento: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                //log the xml to allow easier debug
+                var xml = devAdiant.GetAsXML();
+                Logger.Log.Debug(xml, ex);
+
+                throw ex;
+            }
+
+            // Por algum motivo, a DI API não está a gravar o contacto enviado ao criar o documento. Como permite alterar depois, forçamos um update ao documento
+            if (devAdiant.ContactPersonCode != data.CntctCode)
+            {
+                devAdiant.ContactPersonCode = data.CntctCode;
+                if (devAdiant.Update() != 0)
+                {
+                    var ex = new Exception("Atualizar recebimento: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    throw ex;
+                }
+            }
+
+            AddDocResult result = new AddDocResult();
+
+            this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+
+            result.DocEntry = devAdiant.DocEntry;
+            result.DocNum = devAdiant.DocNum;
+
+            return result;
+        }
+        finally
+        {
+            if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+        }
+
+    }
+
+
     internal AddDocResult ADD_DESPESA(PostDespesaInput data)
     {
         double totalFactura = 0;

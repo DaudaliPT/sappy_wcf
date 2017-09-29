@@ -72,6 +72,10 @@ public interface I_SappyWcf
     string PostAdiantamento(PostAdiantamentoInput body, string empresa);
 
     [OperationContract]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/fecharadiantamento", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
+    string PostFecharAdiantamento(PostFecharAdiantamentoInput body, string empresa);
+
+    [OperationContract]
     [WebInvoke(Method = "POST", UriTemplate = "{empresa}/despesa", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
     string PostDespesa(PostDespesaInput body, string empresa);
 }
