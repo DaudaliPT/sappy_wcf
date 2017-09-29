@@ -60,20 +60,21 @@ public class SappyWcf : I_SappyWcf
 
     public bool Print(string empresa, string docCode)
     {
-        string sInfo = "Print";
+        string sInfo = "Print"; 
         try
         {
             Logger.LogInvoke(sInfo, empresa, docCode);
 
             using (HelperCrystalReports crw = new HelperCrystalReports())
             {
+                string toPrinter = WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters["toPrinter"];
 
                 var fname = crw.GetSAPReportTemplate(empresa, docCode);
                 crw.OpenReport(fname, empresa);
                 crw.setParametersDynamically(empresa, docCode);
 
                 CrystalDecisions.ReportAppServer.Controllers.PrintReportOptions popt = new CrystalDecisions.ReportAppServer.Controllers.PrintReportOptions();
-                popt.PrinterName = SappyWCF_implementation.Properties.Settings.Default.SAPPY001_PrinterName;
+                if (toPrinter!="") popt.PrinterName = toPrinter;
 
                 crw.rptDoc.ReportClientDocument.PrintOutputController.PrintReport(popt);
 
@@ -82,7 +83,7 @@ public class SappyWcf : I_SappyWcf
         }
         catch (System.Exception ex)
         {
-            Logger.Log.Error(ex.Message, ex);
+            Logger.Log.Error(ex.Message, ex); 
 
             throw new WebFaultException<string>(ex.Message, HttpStatusCode.InternalServerError);
         }

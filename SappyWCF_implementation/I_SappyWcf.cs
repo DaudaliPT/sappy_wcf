@@ -25,10 +25,11 @@ public interface I_SappyWcf
         ResponseFormat = WebMessageFormat.Json,
         UriTemplate = "{empresa}/GetPdf({docCode})")]
     Stream GetPdf(string empresa, string docCode);
-
+     
     [OperationContract]
     [WebInvoke(Method = "POST",
         ResponseFormat = WebMessageFormat.Json,
+        BodyStyle = WebMessageBodyStyle.Bare,
         UriTemplate = "{empresa}/print({docCode})")]
     bool Print(string empresa, string docCode);
 
