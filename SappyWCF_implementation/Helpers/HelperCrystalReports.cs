@@ -149,10 +149,13 @@ class HelperCrystalReports : IDisposable
         dynamic parValues = Newtonsoft.Json.JsonConvert.DeserializeObject(parValuesJson);
 
 
+        
+
         foreach (var par in parValues)
         {
-            var thisVal = par.Value;
-            ParameterField rptPar = this.rptDoc.ParameterFields.Find(par.Name, "");
+            var thisVal = par.Value; 
+            ParameterField rptPar = this.rptDoc.ParameterFields.Find(par.Name, ""); 
+ 
             if (rptPar == null) continue;
 
             if (rptPar.PromptingType == DiscreteOrRangeKind.DiscreteValue)

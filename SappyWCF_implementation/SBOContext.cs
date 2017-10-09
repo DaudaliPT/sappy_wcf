@@ -621,10 +621,10 @@ class SBOContext : IDisposable
 
     }
 
-     
+
     internal AddDocResult FECHAR_ADIANTAMENTO_PARA_DESPESAS(PostFecharAdiantamentoInput data)
     {
-        
+
         // Documento para devolução do resto do adiantamento para conta de diferenças
         SAPbobsCOM.Payments devAdiant = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oIncomingPayments);
         devAdiant.DocType = SAPbobsCOM.BoRcptTypes.rSupplier;
@@ -632,7 +632,7 @@ class SBOContext : IDisposable
         devAdiant.ContactPersonCode = data.CntctCode;
         devAdiant.CounterReference = data.CounterRef;
         devAdiant.Remarks = data.Comments;
-        devAdiant.TransferAccount = data.CAIXA_DIFERENCAS; 
+        devAdiant.TransferAccount = data.CAIXA_DIFERENCAS;
         devAdiant.TransferSum = data.VALOR_PENDENTE;
         devAdiant.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)data.TransType;
         if (data.TransType == 46)
@@ -659,6 +659,14 @@ class SBOContext : IDisposable
                 Logger.Log.Debug(xml, ex);
 
                 throw ex;
+            }
+
+            int docEntry = 0;
+            int.TryParse(this.company.GetNewObjectKey(), out docEntry);
+
+            if (devAdiant.GetByKey(docEntry) == false)
+            {
+                throw new Exception("Não foi obter o documento criado em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
             }
 
             // Por algum motivo, a DI API não está a gravar o contacto enviado ao criar o documento. Como permite alterar depois, forçamos um update ao documento
@@ -695,55 +703,63 @@ class SBOContext : IDisposable
 
         // Fatura com a despesa real
         SAPbobsCOM.Documents ftDespesa = (SAPbobsCOM.Documents)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oPurchaseInvoices);
-        ftDespesa.Series = data.Series; 
+        ftDespesa.Series = data.Series;
         ftDespesa.TaxDate = data.TaxDateParsed();
         ftDespesa.CardCode = data.CardCode;
+        ftDespesa.NumAtCard = data.NumAtCard;
+        ftDespesa.Comments = data.Comments;
         foreach (var line in data.Lines)
         {
             if (ftDespesa.Lines.ItemCode != "") ftDespesa.Lines.Add();
 
             ftDespesa.Lines.ItemCode = line.ItemCode;
-            ftDespesa.Lines.Quantity= 1;
+            ftDespesa.Lines.Quantity = 1;
             ftDespesa.Lines.UnitPrice = 0;
             ftDespesa.Lines.PriceAfterVAT = line.ValorComIva;
             totalFactura += line.ValorComIva;
         }
 
+
         // Documento para devolução do adiantamento
         SAPbobsCOM.Payments devAdiant = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oIncomingPayments);
-        devAdiant.DocType = SAPbobsCOM.BoRcptTypes.rSupplier;
-        devAdiant.CardCode = data.Adiantamento.CardCode;
-        devAdiant.ContactPersonCode = data.Adiantamento.CntctCode;
-        devAdiant.CounterReference = data.Adiantamento.CounterRef;
-        devAdiant.Remarks = data.Adiantamento.Comments;
-        devAdiant.TransferAccount = data.CAIXA_PASSAGEM; //para pagamento da factura
-        devAdiant.TransferSum = totalFactura;
-        devAdiant.CashAccount = data.CAIXA_PRINCIPAL; //para retorno do troco
-        devAdiant.CashSum = data.TrocoRecebido;
-        devAdiant.Invoices.InvoiceType =  (SAPbobsCOM.BoRcptInvTypes)data.Adiantamento.TransType;
-        if (data.Adiantamento.TransType == 46)
+        bool comAdiantamento = data.MeioDePagamento.VALOR_PENDENTE > 0;
+        if (comAdiantamento)
         {
-            devAdiant.Invoices.DocEntry = data.Adiantamento.TransId;
-            devAdiant.Invoices.DocLine = data.Adiantamento.Line_ID;
+            devAdiant.DocType = SAPbobsCOM.BoRcptTypes.rSupplier;
+            devAdiant.CardCode = data.MeioDePagamento.CardCode;
+            devAdiant.ContactPersonCode = data.MeioDePagamento.CntctCode;
+            devAdiant.CounterReference = data.MeioDePagamento.CounterRef;
+            devAdiant.Remarks = data.MeioDePagamento.Comments;
+            devAdiant.TransferAccount = data.CAIXA_PASSAGEM; //para pagamento da factura
+            devAdiant.TransferSum = totalFactura;  
+            devAdiant.CashAccount = data.CAIXA_PRINCIPAL; //para retorno do troco
+            devAdiant.CashSum = data.TrocoRecebido;
+            devAdiant.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)data.MeioDePagamento.TransType;
+            if (data.MeioDePagamento.TransType == 46)
+            {
+                devAdiant.Invoices.DocEntry = data.MeioDePagamento.TransId;
+                devAdiant.Invoices.DocLine = data.MeioDePagamento.Line_ID;
+            }
+            else
+            {
+                devAdiant.Invoices.DocEntry = data.MeioDePagamento.CreatedBy;
+            }
+            devAdiant.Invoices.SumApplied = totalFactura + data.TrocoRecebido;
         }
-        else
-        {
-            devAdiant.Invoices.DocEntry = data.Adiantamento.CreatedBy;
-        }
-        devAdiant.Invoices.SumApplied= totalFactura+data.TrocoRecebido;
 
         // Pagamento da factura real
         SAPbobsCOM.Payments pagFt = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oVendorPayments);
         pagFt.DocType = SAPbobsCOM.BoRcptTypes.rSupplier;
         pagFt.CardCode = data.CardCode;
-        devAdiant.CounterReference = data.Adiantamento.CounterRef;
-        devAdiant.Remarks = data.Adiantamento.Comments;
+        pagFt.CounterReference = data.MeioDePagamento.CounterRef;
+        pagFt.Remarks = data.MeioDePagamento.Comments;
 
-        pagFt.TransferAccount = data.CAIXA_PASSAGEM; //para pagamento da factura
-        pagFt.TransferSum = totalFactura;  
-        pagFt.Invoices.InvoiceType =  SAPbobsCOM.BoRcptInvTypes.it_PurchaseInvoice;
+        pagFt.TransferAccount = comAdiantamento ? data.CAIXA_PASSAGEM : data.CAIXA_PRINCIPAL; //para pagamento da factura
+
+        pagFt.TransferSum = totalFactura;
+        pagFt.Invoices.InvoiceType = SAPbobsCOM.BoRcptInvTypes.it_PurchaseInvoice;
         // pagFt.Invoices.DocEntry =  /*só pode ser preenchido de pois de adicionada a fatura de compra*/
-        pagFt.Invoices.SumApplied= totalFactura;
+        pagFt.Invoices.SumApplied = totalFactura;
 
         try
         {
@@ -767,33 +783,45 @@ class SBOContext : IDisposable
                 if (ftDespesa.GetByKey(docEntry) == false)
                 {
                     throw new Exception("Obter fatura: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
-                }                 
-            }
-
-
-            if (devAdiant.Add() != 0)
-            {
-                var ex = new Exception("Gravar recebimento: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
-
-                //log the xml to allow easier debug
-                var xml = devAdiant.GetAsXML();
-                Logger.Log.Debug(xml, ex);
-
-                throw ex;
-            }
-
-            // Por algum motivo, a DI API não está a gravar o contacto enviado ao criar o documento. Como permite alterar depois, forçamos um update ao documento
-            if (devAdiant.ContactPersonCode != data.Adiantamento.CntctCode)
-            {
-                devAdiant.ContactPersonCode = data.Adiantamento.CntctCode;
-                if (devAdiant.Update() != 0)
-                {
-                    var ex = new Exception("Atualizar recebimento: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
-                    throw ex;
                 }
             }
-            
-            pagFt.Invoices.DocEntry =  ftDespesa.DocEntry; /*só pode ser preenchido de pois de adicionada a fatura de compra*/
+
+
+            if (comAdiantamento)
+            {
+                if (devAdiant.Add() != 0)
+                {
+                    var ex = new Exception("Gravar recebimento: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                    //log the xml to allow easier debug
+                    var xml = devAdiant.GetAsXML();
+                    Logger.Log.Debug(xml, ex);
+
+                    throw ex;
+                }
+
+                int docEntry = 0;
+                int.TryParse(this.company.GetNewObjectKey(), out docEntry);
+
+                if (devAdiant.GetByKey(docEntry) == false)
+                {
+                    throw new Exception("Não foi obter o recebimento em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                }
+
+                // Por algum motivo, a DI API não está a gravar o contacto enviado ao criar o documento. Como permite alterar depois, forçamos um update ao documento
+                if (devAdiant.ContactPersonCode != data.MeioDePagamento.CntctCode)
+                {
+                    devAdiant.ContactPersonCode = data.MeioDePagamento.CntctCode;
+
+                    if (devAdiant.Update() != 0)
+                    {
+                        var ex = new Exception("Atualizar recebimento: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                        throw ex;
+                    }
+                }
+            }
+
+            pagFt.Invoices.DocEntry = ftDespesa.DocEntry; /*só pode ser preenchido de pois de adicionada a fatura de compra*/
             if (pagFt.Add() != 0)
             {
                 var ex = new Exception("Gravar pagamento: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());

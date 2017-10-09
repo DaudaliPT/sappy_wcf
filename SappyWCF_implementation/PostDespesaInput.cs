@@ -8,7 +8,7 @@ public class PostDespesaLinesInput
     public string ItemCode;
     public double ValorComIva;
 }
-public class PostDespesaAdiantamentoInput
+public class PostDespesaMeioPagamentoInput
 {
     public int TransType;
     public int CreatedBy;
@@ -39,10 +39,11 @@ public class PostDespesaInput
     public string Comments;
     public double TrocoRecebido;
     public List<PostDespesaLinesInput> Lines;
-    public PostDespesaAdiantamentoInput Adiantamento;
+    public PostDespesaMeioPagamentoInput MeioDePagamento;
     public string CAIXA_PRINCIPAL;
     public string CAIXA_PASSAGEM;
     public string CAIXA_DIFERENCAS;
+    public string NumAtCard;
     internal DateTime TaxDateParsed()
     {
         DateTime data;
