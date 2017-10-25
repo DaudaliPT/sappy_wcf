@@ -146,8 +146,8 @@ class SBOContext : IDisposable
                     //newDoc.Lines.InventoryQuantity = (double)(decimal)line["QTSTK"]; //Definir sobrepoe os fatores 1 e 2
                     newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
                     newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
-                    //newDoc.Lines.VatGroup = (string)line["VATGROUP"];
-                    newDoc.Lines.TaxCode = (string)line["VATGROUP"];
+                    newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                    //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
                     newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
 
                     // Estes campos atualmente estão ao nivel de cabeçalho, mas são guardados no documento nas linhas,
@@ -183,8 +183,9 @@ class SBOContext : IDisposable
                     newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
                     newDoc.Lines.Quantity = QTBONUS;
                     newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
-                    //newDoc.Lines.VatGroup = (string)line["VATGROUP"];
-                    newDoc.Lines.TaxCode = (string)line["VATGROUP"];
+                    newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                    //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
+                    newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
                     if (QTSTK != 0) newDoc.Lines.UserFields.Fields.Item("U_apyREFLIN").Value = newDoc.Lines.Count - 2;
 
                     newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
@@ -217,8 +218,9 @@ class SBOContext : IDisposable
                         newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
                         newDoc.Lines.Quantity = -1 * QTBONUS;
                         newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
-                        //newDoc.Lines.VatGroup = (string)line["VATGROUP"];
-                        newDoc.Lines.TaxCode = (string)line["VATGROUP"];
+                        newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                        //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
+                        newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
                         newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
                         newDoc.Lines.LineTotal = -1 * (double)(decimal)line["LINETOTALBONUS"];
                         if (QTSTK != 0)
