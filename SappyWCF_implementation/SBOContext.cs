@@ -58,7 +58,6 @@ class SBOContext : IDisposable
 
     internal AddDocResult SAPDOC_FROM_SAPPY_DRAFT(DocActions action, string objCode, int draftId, double expectedTotal)
     {
-
         int priceDecimals = 6;
         {
             var s = this.company.GetCompanyService();
@@ -104,6 +103,9 @@ class SBOContext : IDisposable
         using (DataTable detailsDtNET = dataLayer.Execute(sqlDetailNET))
         {
             DataRow header = headerDt.Rows[0];
+
+            int module = Convert.ToInt32(header["MODULE"]);
+            if (module != 0 && module != 1) throw new Exception("Esta função só pode ser chamada para MODULE IN (0,1)");
 
             int objType = Convert.ToInt32(header["OBJTYPE"]);
             bool sujRevalorizacaoNET = (action == DocActions.ADD && objType == 18);
@@ -241,9 +243,7 @@ class SBOContext : IDisposable
                         newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = (double)(decimal)line["NETPRICE"];
                         newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = -1 * (double)(decimal)line["NETTOTALBONUS"];
                     }
-
                 }
-
             }
 
             // ARREDONDAMENTO DE TOTAL
@@ -469,6 +469,210 @@ class SBOContext : IDisposable
             }
         }
     }
+
+
+    internal AddDocResult SAPDOC_FROM_SAPPY_DRAFT_POS(DocActions action, string objCode, int draftId, double expectedTotal)
+    {
+
+        int priceDecimals = 6;
+        {
+            var s = this.company.GetCompanyService();
+            var ai = s.GetAdminInfo();
+            priceDecimals = ai.PriceAccuracy;
+        }
+
+        var sqlHeader = "SELECT T0.* ";
+        sqlHeader += "\n , CAST(SETT_SERIE.RAW_VALUE AS INTEGER)  AS DEFSERIE";
+        sqlHeader += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC T0";
+        sqlHeader += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".SAPPY_SETTINGS SETT_CFINAL ON SETT_CFINAL.ID ='POS.CFINAL.CARDCODE'";
+        sqlHeader += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".SAPPY_SETTINGS SETT_SERIE";
+        sqlHeader += "\n        ON SETT_SERIE.ID = CASE  WHEN T0.OBJTYPE='13'AND T0.CARDCODE = SETT_CFINAL.RAW_VALUE THEN 'POS.CFINAL.SERIEFT'";
+        sqlHeader += "\n                                 WHEN T0.OBJTYPE='14'AND T0.CARDCODE = SETT_CFINAL.RAW_VALUE THEN 'POS.CFINAL.SERIENC'";
+        sqlHeader += "\n                                 WHEN T0.OBJTYPE='13'                                        THEN 'POS.GERAL.SERIEFT'";
+        sqlHeader += "\n                                 WHEN T0.OBJTYPE='14'                                        THEN 'POS.GERAL.SERIENC'";
+        sqlHeader += "\n                                 END";
+        sqlHeader += "\n WHERE T0.ID =" + draftId;
+
+        var sqlDetail = "SELECT T1.*";
+        sqlDetail += "\n , OITM.\"InvntryUom\"";
+        sqlDetail += "\n , OITW.\"OnHand\"";
+        sqlDetail += "\n , OITW.\"AvgPrice\"";
+        sqlDetail += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
+        sqlDetail += "\n INNER JOIN \"" + this.company.CompanyDB + "\".OITM OITM on T1.ITEMCODE = OITM.\"ItemCode\"";
+        sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OITW OITW on T1.ITEMCODE = OITW.\"ItemCode\" AND T1.WHSCODE = OITW.\"WhsCode\"";
+        sqlDetail += "\n WHERE T1.ID =" + draftId;
+        sqlDetail += "\n ORDER BY T1.LINENUM";
+        using (HelperOdbc dataLayer = new HelperOdbc())
+        using (DataTable headerDt = dataLayer.Execute(sqlHeader))
+        using (DataTable detailsDt = dataLayer.Execute(sqlDetail))
+        {
+            DataRow header = headerDt.Rows[0];
+
+            int module = Convert.ToInt32(header["MODULE"]);
+            if (module != 2) throw new Exception("Esta função só pode ser chamada para MODULE = 2 (POS)");
+
+            int objType = Convert.ToInt32(header["OBJTYPE"]);
+            if (objType.ToString() != objCode) throw new Exception("objCode " + objCode + " is diferent of " + objType.ToString());
+
+            int serie = Convert.ToInt32(header["DEFSERIE"]);
+            if (serie == 0) throw new Exception("A Série não está definida nas opções para este documento (POS).");
+
+
+            int DISTRIBUICAO = (short)header["DISTRIBUICAO"];
+
+            SAPbobsCOM.Documents newDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
+            newDoc.Series = serie;
+            // DateTime TAXDATE = (DateTime)header["TAXDATE"];
+            // DateTime DOCDUEDATE = (DateTime)header["DOCDUEDATE"];
+            // if (TAXDATE.Year > 1900) newDoc.TaxDate = TAXDATE;
+            // if (DOCDUEDATE.Year > 1900) newDoc.DocDueDate = DOCDUEDATE;
+
+            newDoc.CardCode = (string)header["CARDCODE"];
+            if ((string)header["SHIPADDR"] != "") newDoc.ShipToCode = (string)header["SHIPADDR"];
+            if ((string)header["BILLADDR"] != "") newDoc.PayToCode = (string)header["BILLADDR"];
+            if ((string)header["NUMATCARD"] != "") newDoc.NumAtCard = (string)header["NUMATCARD"];
+            if ((string)header["COMMENTS"] != "") newDoc.Comments = (string)header["COMMENTS"];
+
+
+            newDoc.UserFields.Fields.Item("U_apyUSER").Value = (string)header["CREATED_BY_NAME"];
+            if ((string)header["MATRICULA"] != "") newDoc.UserFields.Fields.Item("U_apyMATRICULA").Value = (string)header["MATRICULA"];
+
+            foreach (DataRow line in detailsDt.Rows)
+            {
+                var QTCX = (double)(decimal)line["QTCX"];   // Num caixas/pack
+                var QTPK = (double)(decimal)line["QTPK"];
+                var QTSTK = (double)(decimal)line["QTSTK"];
+                var QTBONUS = (double)(decimal)line["QTBONUS"];
+
+                if (QTSTK != 0)
+                {
+                    if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
+                    newDoc.Lines.ItemCode = (string)line["ITEMCODE"];
+                    newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
+                    newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
+                    newDoc.Lines.Factor1 = QTCX;   // Num caixas/pack
+                    newDoc.Lines.Factor2 = QTPK;   // Qdd por Caixa/pack 
+                    //newDoc.Lines.InventoryQuantity = (double)(decimal)line["QTSTK"]; //Definir sobrepoe os fatores 1 e 2
+                    newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
+                    newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
+                    newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                    //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
+
+                    newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
+                    newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
+
+                    newDoc.Lines.UserFields.Fields.Item("U_apyIDPROMO").Value = (int)line["IDPROMO"];
+                    if ((string)line["PRICE_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyPRICECHBY").Value = (string)line["PRICE_CHANGEDBY"];
+                    if ((string)line["DISC_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyDISCCHBY").Value = (string)line["DISC_CHANGEDBY"];
+                }
+
+                if (QTBONUS != 0)
+                {
+                    if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
+                    newDoc.Lines.ItemCode = (string)line["ITEMCODE"];
+                    newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
+                    newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
+                    newDoc.Lines.Quantity = QTBONUS;
+                    newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
+                    newDoc.Lines.VatGroup = (string)line["VATGROUP"];
+                    //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
+                    newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
+
+                    newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = "BONUS";
+                    newDoc.Lines.DiscountPercent = 100;
+                    newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = 0;
+                    newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = 0;
+                }
+            }
+
+
+            try
+            {
+                this.company.StartTransaction();
+
+                if (newDoc.Add() != 0)
+                {
+                    var ex = new Exception("Não foi possível gravar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                    //log the xml to allow easier debug
+                    var xml = newDoc.GetAsXML();
+                    Logger.Log.Debug(xml, ex);
+
+                    throw ex;
+                }
+                else
+                {
+                    int docentry = 0;
+                    int.TryParse(this.company.GetNewObjectKey(), out docentry);
+
+                    if (newDoc.GetByKey(docentry) == false)
+                    {
+                        throw new Exception("Não foi obter o documento criado em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    }
+                }
+
+                AddDocResult result = new AddDocResult();
+                if (action == DocActions.ADD && newDoc.DocTotal != expectedTotal)
+                {
+                    //log the xml to allow easier debug
+                    var xml = newDoc.GetAsXML();
+                    Logger.Log.Debug(xml);
+
+                    result.DocTotal = newDoc.DocTotal;
+                    result.message = "(TOTALDIF) O total não é o esperado.";
+                    return result;
+                }
+
+                if (action == DocActions.ADD)
+                {
+                    if (DISTRIBUICAO == 1)
+                    {
+                        SAPbobsCOM.JournalEntries JD = this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oJournalEntries);
+                        if (!JD.GetByKey(newDoc.TransNum))
+                        {
+                            throw new Exception("Não foi obter o documento LD criado em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                        }
+
+                        for (int i = 0; i < JD.Lines.Count; i++)
+                        {
+                            JD.Lines.SetCurrentLine(i);
+                            if (JD.Lines.ShortName == newDoc.CardCode)
+                            {
+                                JD.Lines.UserFields.Fields.Item("U_apyCLASS").Value = "D";
+                            }
+                        }
+
+                        if (JD.Update() != 0)
+                        {
+                            var ex = new Exception("Não foi possível marcar LD para Distribuição em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                            throw ex;
+                        }
+                    }
+
+
+                    this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+
+                    //APGAR OS REGISTOS
+                    dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC WHERE ID =" + draftId);
+                    dataLayer.Execute("DELETE FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES WHERE ID =" + draftId);
+                }
+                result.DocEntry = newDoc.DocEntry;
+                result.DocNum = newDoc.DocNum;
+
+                result.DocTotal = newDoc.DocTotal;
+                result.DiscountPercent = newDoc.DiscountPercent;
+                result.TotalDiscount = newDoc.TotalDiscount;
+                result.VatSum = newDoc.VatSum;
+                result.RoundingDiffAmount = newDoc.RoundingDiffAmount;
+                return result;
+            }
+            finally
+            {
+                if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+            }
+        }
+    }
+
 
     internal AddDocResult SAPDOC_PATCH_WITH_SAPPY_CHANGES(string objCode, int docEntry)
     {
@@ -733,7 +937,7 @@ class SBOContext : IDisposable
             devAdiant.CounterReference = data.MeioDePagamento.CounterRef;
             devAdiant.Remarks = data.MeioDePagamento.Comments;
             devAdiant.TransferAccount = data.CAIXA_PASSAGEM; //para pagamento da factura
-            devAdiant.TransferSum = totalFactura;  
+            devAdiant.TransferSum = totalFactura;
             devAdiant.CashAccount = data.CAIXA_PRINCIPAL; //para retorno do troco
             devAdiant.CashSum = data.TrocoRecebido;
             devAdiant.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)data.MeioDePagamento.TransType;

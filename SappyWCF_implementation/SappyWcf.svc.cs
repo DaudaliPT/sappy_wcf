@@ -68,13 +68,20 @@ public class SappyWcf : I_SappyWcf
             using (HelperCrystalReports crw = new HelperCrystalReports())
             {
                 string toPrinter = WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters["toPrinter"];
+                string toPrinterPOS = WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters["toPrinterPOS"];
 
                 var fname = crw.GetSAPReportTemplate(empresa, docCode);
                 crw.OpenReport(fname, empresa);
                 crw.setParametersDynamically(empresa, docCode);
 
                 CrystalDecisions.ReportAppServer.Controllers.PrintReportOptions popt = new CrystalDecisions.ReportAppServer.Controllers.PrintReportOptions();
-                if (toPrinter!="") popt.PrinterName = toPrinter;
+
+                if (crw.rptDoc.SummaryInfo.KeywordsInReport!=null && 
+                    crw.rptDoc.SummaryInfo.KeywordsInReport.Contains("USE_POS_PRINTER") && 
+                    toPrinterPOS != "") 
+                    popt.PrinterName = toPrinterPOS;
+                else if (toPrinter!="") 
+                    popt.PrinterName = toPrinter;
 
                 crw.rptDoc.ReportClientDocument.PrintOutputController.PrintReport(popt);
 
@@ -112,7 +119,7 @@ public class SappyWcf : I_SappyWcf
             throw new WebFaultException<string>(ex.ToString(), HttpStatusCode.NotFound);
         }
     }
-     
+
     public string AddDoc(string empresa, string objCode, string draftId, string expectedTotal)
     {
         Result result = new Result();
@@ -133,6 +140,47 @@ public class SappyWcf : I_SappyWcf
                     double ExpectedTotal = Convert.ToDouble(expectedTotal, CultureInfo.InvariantCulture);
 
                     result.result = sboCon.SAPDOC_FROM_SAPPY_DRAFT(DocActions.ADD, objCode, Id, ExpectedTotal);
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.Log.Error(ex.Message, ex);
+                    result.error = ex.Message;
+                }
+                finally
+                {
+                    Monitor.Exit(sboCon);
+                }
+            }
+            else
+            {
+                result.error = "Busy, please try again later...";
+            }
+        }
+        Logger.LogResult(sInfo, result);
+        return Logger.FormatToJson(result);
+
+    }
+
+    public string AddDocPOS(string empresa, string objCode, string draftId, string expectedTotal)
+    {
+        Result result = new Result();
+        string sInfo = "AddDocPOS";
+        Logger.LogInvoke(sInfo, empresa, objCode, draftId, expectedTotal);
+
+        if (!SBOHandler.DIAPIConnections.ContainsKey(empresa))
+            result.error = "Empresa não configurada ou inexistente.";
+        else
+        {
+            var sboCon = SBOHandler.DIAPIConnections[empresa];
+
+            if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
+            {
+                try
+                {
+                    int Id = Convert.ToInt32(draftId);
+                    double ExpectedTotal = Convert.ToDouble(expectedTotal, CultureInfo.InvariantCulture);
+
+                    result.result = sboCon.SAPDOC_FROM_SAPPY_DRAFT_POS(DocActions.ADD, objCode, Id, ExpectedTotal);
                 }
                 catch (System.Exception ex)
                 {
