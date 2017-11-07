@@ -68,7 +68,7 @@ public class SappyWcf : I_SappyWcf
             using (HelperCrystalReports crw = new HelperCrystalReports())
             {
                 string toPrinter = WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters["toPrinter"];
-                string toPrinterPOS = WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters["toPrinterPOS"];
+                string toPrinterTaloes = WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters["toPrinterTaloes"];
 
                 var fname = crw.GetSAPReportTemplate(empresa, docCode);
                 crw.OpenReport(fname, empresa);
@@ -78,8 +78,8 @@ public class SappyWcf : I_SappyWcf
 
                 if (crw.rptDoc.SummaryInfo.KeywordsInReport!=null && 
                     crw.rptDoc.SummaryInfo.KeywordsInReport.Contains("USE_POS_PRINTER") && 
-                    toPrinterPOS != "") 
-                    popt.PrinterName = toPrinterPOS;
+                    toPrinterTaloes != "") 
+                    popt.PrinterName = toPrinterTaloes;
                 else if (toPrinter!="") 
                     popt.PrinterName = toPrinter;
 

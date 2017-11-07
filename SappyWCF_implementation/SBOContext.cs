@@ -9,7 +9,6 @@ using System.Data;
 class SBOContext : IDisposable
 {
     private SAPbobsCOM.Company company = null;
-
     internal SBOContext(string companydb)
     {
         //if (Thread.CurrentThread.GetApartmentState().ToString() != "STA")
@@ -471,6 +470,36 @@ class SBOContext : IDisposable
     }
 
 
+
+    internal string GetLayoutCode(string TypeCode)
+    {
+        SAPbobsCOM.Recordset rec = null;
+        try
+        {
+            SAPbobsCOM.CompanyService oCmpSrv = null;
+            SAPbobsCOM.ReportLayoutsService oReportLayoutService = null;
+            SAPbobsCOM.ReportParams oReportParam = null;
+            SAPbobsCOM.DefaultReportParams oReportParaDefault = null;
+            oCmpSrv = this.company.GetCompanyService();
+            oReportLayoutService = (SAPbobsCOM.ReportLayoutsService)oCmpSrv.GetBusinessService(SAPbobsCOM.ServiceTypes.ReportLayoutsService);
+            oReportParam = (SAPbobsCOM.ReportParams)oReportLayoutService.GetDataInterface(SAPbobsCOM.ReportLayoutsServiceDataInterfaces.rlsdiReportParams);
+            oReportParam.ReportCode = TypeCode;
+            oReportParam.UserID = this.company.UserSignature;
+            oReportParaDefault = oReportLayoutService.GetDefaultReport(oReportParam);
+            return oReportParaDefault.LayoutCode;
+        }
+        catch (Exception err)
+        {
+            throw new Exception("GetDocCode" + err.Message);
+        }
+        finally
+        {
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(rec);
+            rec = null;
+            System.GC.Collect();
+        }
+    }
+
     internal AddDocResult SAPDOC_FROM_SAPPY_DRAFT_POS(DocActions action, string objCode, int draftId, double expectedTotal)
     {
 
@@ -481,25 +510,49 @@ class SBOContext : IDisposable
             priceDecimals = ai.PriceAccuracy;
         }
 
-        var sqlHeader = "SELECT T0.* ";
-        sqlHeader += "\n , CAST(SETT_SERIE.RAW_VALUE AS INTEGER)  AS DEFSERIE";
-        sqlHeader += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC T0";
-        sqlHeader += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".SAPPY_SETTINGS SETT_CFINAL ON SETT_CFINAL.ID ='POS.CFINAL.CARDCODE'";
-        sqlHeader += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".SAPPY_SETTINGS SETT_SERIE";
-        sqlHeader += "\n        ON SETT_SERIE.ID = CASE  WHEN T0.OBJTYPE='13'AND T0.CARDCODE = SETT_CFINAL.RAW_VALUE THEN 'POS.CFINAL.SERIEFT'";
-        sqlHeader += "\n                                 WHEN T0.OBJTYPE='14'AND T0.CARDCODE = SETT_CFINAL.RAW_VALUE THEN 'POS.CFINAL.SERIENC'";
-        sqlHeader += "\n                                 WHEN T0.OBJTYPE='13'                                        THEN 'POS.GERAL.SERIEFT'";
-        sqlHeader += "\n                                 WHEN T0.OBJTYPE='14'                                        THEN 'POS.GERAL.SERIENC'";
-        sqlHeader += "\n                                 END";
+
+        string CFINAL_CARDCODE = ""; 
+        int CFINAL_SERIE13 = 0; 
+        int DOC_SERIE = 0; 
+         
+        var sql = "SELECT * ";
+        sql += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_SETTINGS ";
+        sql += "\n WHERE ID IN ('POS.CFINAL.CARDCODE'";
+        sql += "\n             ,'POS.CFINAL.SERIE13'";
+        sql += "\n             ,'DOC.OBJTYPE" + objCode + ".SERIE')";
+        using (HelperOdbc dataLayer = new HelperOdbc())
+        using (DataTable dt = dataLayer.Execute(sql))
+        {
+            foreach (DataRow row in dt.Rows)
+            {
+                if ((string)row["ID"] == "POS.CFINAL.CARDCODE") CFINAL_CARDCODE = (string)row["RAW_VALUE"];
+                if ((string)row["ID"] == "POS.CFINAL.SERIE13") CFINAL_SERIE13 = Convert.ToInt32(row["RAW_VALUE"]);
+                if ((string)row["ID"] == "DOC.OBJTYPE" + objCode + ".SERIE") DOC_SERIE = Convert.ToInt32(row["RAW_VALUE"]);
+            }
+        }
+
+
+        // Obter cabeçalho do documento a adicionar
+        var sqlHeader = "SELECT T0.* "; 
+        sqlHeader += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC T0"; ;
         sqlHeader += "\n WHERE T0.ID =" + draftId;
 
+        // Obter linhas do documento a adicionar
         var sqlDetail = "SELECT T1.*";
         sqlDetail += "\n , OITM.\"InvntryUom\"";
         sqlDetail += "\n , OITW.\"OnHand\"";
         sqlDetail += "\n , OITW.\"AvgPrice\"";
+        if (objCode == "14") sqlDetail += "\n , OINV.\"CardCode\"";
         sqlDetail += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
         sqlDetail += "\n INNER JOIN \"" + this.company.CompanyDB + "\".OITM OITM on T1.ITEMCODE = OITM.\"ItemCode\"";
         sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OITW OITW on T1.ITEMCODE = OITW.\"ItemCode\" AND T1.WHSCODE = OITW.\"WhsCode\"";
+        if (objCode == "14")
+        {
+            sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".INV1 INV1 ON T1.BASE_OBJTYPE  = 13";
+            sqlDetail += "\n               AND T1.BASE_DOCENTRY = INV1.\"DocEntry\"";
+            sqlDetail += "\n               AND T1.BASE_LINENUM  = INV1.\"LineNum\"";
+            sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OINV OINV ON INV1.\"DocEntry\"=OINV.\"DocEntry\"";
+        }
         sqlDetail += "\n WHERE T1.ID =" + draftId;
         sqlDetail += "\n ORDER BY T1.LINENUM";
         using (HelperOdbc dataLayer = new HelperOdbc())
@@ -514,11 +567,21 @@ class SBOContext : IDisposable
             int objType = Convert.ToInt32(header["OBJTYPE"]);
             if (objType.ToString() != objCode) throw new Exception("objCode " + objCode + " is diferent of " + objType.ToString());
 
-            int serie = Convert.ToInt32(header["DEFSERIE"]);
+            int serie = 0;
+
+            if (objType == 13 && (string)header["CARDCODE"] == CFINAL_CARDCODE)
+            {
+                //Factura a CLiente Final = Factura simplificada
+                serie = CFINAL_SERIE13;
+            }
+            else
+            {
+                serie = DOC_SERIE; 
+            }
             if (serie == 0) throw new Exception("A Série não está definida nas opções para este documento (POS).");
 
 
-            int DISTRIBUICAO = (short)header["DISTRIBUICAO"];
+            int DISTRIBUICAO = (short)header["DISTRIBUICAO"]; 
 
             SAPbobsCOM.Documents newDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
             newDoc.Series = serie;
@@ -533,12 +596,16 @@ class SBOContext : IDisposable
             if ((string)header["NUMATCARD"] != "") newDoc.NumAtCard = (string)header["NUMATCARD"];
             if ((string)header["COMMENTS"] != "") newDoc.Comments = (string)header["COMMENTS"];
 
-
             newDoc.UserFields.Fields.Item("U_apyUSER").Value = (string)header["CREATED_BY_NAME"];
             if ((string)header["MATRICULA"] != "") newDoc.UserFields.Fields.Item("U_apyMATRICULA").Value = (string)header["MATRICULA"];
 
             foreach (DataRow line in detailsDt.Rows)
             {
+                if (objCode == "14")
+                {
+                    string CardCode = (string)line["CardCode"];
+                    if (newDoc.CardCode != CardCode) throw new Exception("Encontrada referência a documento de outra entidade: " + CardCode);
+                }
                 var QTCX = (double)(decimal)line["QTCX"];   // Num caixas/pack
                 var QTPK = (double)(decimal)line["QTPK"];
                 var QTSTK = (double)(decimal)line["QTSTK"];
@@ -559,30 +626,21 @@ class SBOContext : IDisposable
                     //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
 
                     newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
-                    newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
+
+                    // newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
+                    newDoc.Lines.DiscountPercent = (double)(decimal)line["DISCOUNT"];
 
                     newDoc.Lines.UserFields.Fields.Item("U_apyIDPROMO").Value = (int)line["IDPROMO"];
                     if ((string)line["PRICE_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyPRICECHBY").Value = (string)line["PRICE_CHANGEDBY"];
                     if ((string)line["DISC_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyDISCCHBY").Value = (string)line["DISC_CHANGEDBY"];
-                }
 
-                if (QTBONUS != 0)
-                {
-                    if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
-                    newDoc.Lines.ItemCode = (string)line["ITEMCODE"];
-                    newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
-                    newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
-                    newDoc.Lines.Quantity = QTBONUS;
-                    newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
-                    newDoc.Lines.VatGroup = (string)line["VATGROUP"];
-                    //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
-                    newDoc.Lines.UserFields.Fields.Item("U_apyINCONF").Value = (short)line["HASINCONF"] == 1 ? "Y" : "N";
-
-                    newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = "BONUS";
-                    newDoc.Lines.DiscountPercent = 100;
-                    newDoc.Lines.UserFields.Fields.Item("U_apyPRCNET").Value = 0;
-                    newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = 0;
-                }
+                    if (objCode == "14")
+                    {
+                        newDoc.Lines.UserFields.Fields.Item("U_apyBSTYPE").Value = (int)line["BASE_OBJTYPE"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyBSENTRY").Value = (int)line["BASE_DOCENTRY"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyBSLINE").Value = (int)line["BASE_LINENUM"];
+                    }
+                } 
             }
 
 
@@ -672,7 +730,6 @@ class SBOContext : IDisposable
             }
         }
     }
-
 
     internal AddDocResult SAPDOC_PATCH_WITH_SAPPY_CHANGES(string objCode, int docEntry)
     {
