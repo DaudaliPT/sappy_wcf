@@ -93,7 +93,7 @@ public class SappyWcf : I_SappyWcf
             Logger.Log.Error(ex.Message, ex); 
 
             throw new WebFaultException<string>(ex.Message, HttpStatusCode.InternalServerError);
-        }
+        }   
     }
 
     public string GetPdfParameters(string empresa, string docCode)

@@ -513,13 +513,15 @@ class SBOContext : IDisposable
 
         string CFINAL_CARDCODE = ""; 
         int CFINAL_SERIE13 = 0; 
-        int DOC_SERIE = 0; 
+        int DOC_SERIE = 0;
+        string COND_ITEMS_WITHOUT_PRICE = "";
          
         var sql = "SELECT * ";
         sql += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_SETTINGS ";
         sql += "\n WHERE ID IN ('POS.CFINAL.CARDCODE'";
         sql += "\n             ,'POS.CFINAL.SERIE13'";
-        sql += "\n             ,'DOC.OBJTYPE" + objCode + ".SERIE')";
+        sql += "\n             ,'DOC.OBJTYPE" + objCode + ".SERIE'";
+        sql += "\n             ,'POS.GERAL.COND_ITEMS_WITHOUT_PRICE')";
         using (HelperOdbc dataLayer = new HelperOdbc())
         using (DataTable dt = dataLayer.Execute(sql))
         {
@@ -528,9 +530,10 @@ class SBOContext : IDisposable
                 if ((string)row["ID"] == "POS.CFINAL.CARDCODE") CFINAL_CARDCODE = (string)row["RAW_VALUE"];
                 if ((string)row["ID"] == "POS.CFINAL.SERIE13") CFINAL_SERIE13 = Convert.ToInt32(row["RAW_VALUE"]);
                 if ((string)row["ID"] == "DOC.OBJTYPE" + objCode + ".SERIE") DOC_SERIE = Convert.ToInt32(row["RAW_VALUE"]);
+                if ((string)row["ID"] == "POS.GERAL.COND_ITEMS_WITHOUT_PRICE") COND_ITEMS_WITHOUT_PRICE = (string)row["RAW_VALUE"];
             }
         }
-
+        if (COND_ITEMS_WITHOUT_PRICE == "") COND_ITEMS_WITHOUT_PRICE = "1=0";// se não houver definição, esta expressão causa que todos tem que ter preço
 
         // Obter cabeçalho do documento a adicionar
         var sqlHeader = "SELECT T0.* "; 
@@ -541,23 +544,50 @@ class SBOContext : IDisposable
         var sqlDetail = "SELECT T1.*";
         sqlDetail += "\n , OITM.\"InvntryUom\"";
         sqlDetail += "\n , OITW.\"OnHand\"";
-        sqlDetail += "\n , OITW.\"AvgPrice\"";
-        if (objCode == "14") sqlDetail += "\n , OINV.\"CardCode\"";
+        sqlDetail += "\n , OITW.\"AvgPrice\""; 
+        sqlDetail +="\n , CASE WHEN " + COND_ITEMS_WITHOUT_PRICE + " THEN 'N' ELSE 'Y' END AS MUST_HAVE_PRICE";
         sqlDetail += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
         sqlDetail += "\n INNER JOIN \"" + this.company.CompanyDB + "\".OITM OITM on T1.ITEMCODE = OITM.\"ItemCode\"";
-        sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OITW OITW on T1.ITEMCODE = OITW.\"ItemCode\" AND T1.WHSCODE = OITW.\"WhsCode\"";
-        if (objCode == "14")
-        {
-            sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".INV1 INV1 ON T1.BASE_OBJTYPE  = 13";
-            sqlDetail += "\n               AND T1.BASE_DOCENTRY = INV1.\"DocEntry\"";
-            sqlDetail += "\n               AND T1.BASE_LINENUM  = INV1.\"LineNum\"";
-            sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OINV OINV ON INV1.\"DocEntry\"=OINV.\"DocEntry\"";
-        }
+        sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OITW OITW on T1.ITEMCODE = OITW.\"ItemCode\" AND T1.WHSCODE = OITW.\"WhsCode\""; 
         sqlDetail += "\n WHERE T1.ID =" + draftId;
         sqlDetail += "\n ORDER BY T1.LINENUM";
+
+        // Validar os totais por Artigo
+        var sqlTotalByItem = "SELECT T1.ITEMCODE";
+        sqlTotalByItem += "\n      , max(T1.ITEMNAME) AS ITEMNAME";
+        sqlTotalByItem += "\n      , T1.BASE_OBJTYPE";
+        sqlTotalByItem += "\n      , T1.BASE_DOCENTRY";
+        sqlTotalByItem += "\n      , T1.BASE_LINENUM";
+        if (objCode == "14")
+        {
+            sqlTotalByItem += "\n , BASEDOC.\"CardCode\"";
+            sqlTotalByItem += "\n , BASEDOC.\"QuantityAvailableSAP\"";
+        }
+        sqlTotalByItem += "\n      , SUM(QTSTK) AS QTSTK";
+        sqlTotalByItem += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";  
+        if (objCode == "14")
+        {
+            sqlTotalByItem += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".SAPPY_LINE_LINK_13_14 as BASEDOC ";
+            sqlTotalByItem += "\n                ON T1.BASE_OBJTYPE  = BASEDOC.\"ObjType\"";
+            sqlTotalByItem += "\n               AND T1.BASE_DOCENTRY = BASEDOC.\"DocEntry\"";
+            sqlTotalByItem += "\n               AND T1.BASE_LINENUM  = BASEDOC.\"LineNum\"";
+        }
+        sqlTotalByItem += "\n WHERE T1.ID =" + draftId;
+        sqlTotalByItem += "\n GROUP BY T1.ITEMCODE";
+        sqlTotalByItem += "\n      , T1.BASE_OBJTYPE";
+        sqlTotalByItem += "\n      , T1.BASE_DOCENTRY";
+        sqlTotalByItem += "\n      , T1.BASE_LINENUM";
+        if (objCode == "14")
+        {
+            sqlTotalByItem += "\n , BASEDOC.\"CardCode\"";
+            sqlTotalByItem += "\n , BASEDOC.\"QuantityAvailableSAP\"";
+        }
+        sqlTotalByItem += "\n ORDER BY min(T1.LINENUM)";
+
         using (HelperOdbc dataLayer = new HelperOdbc())
         using (DataTable headerDt = dataLayer.Execute(sqlHeader))
         using (DataTable detailsDt = dataLayer.Execute(sqlDetail))
+        using (DataTable itemTotalsDt = dataLayer.Execute(sqlTotalByItem))
         {
             DataRow header = headerDt.Rows[0];
 
@@ -581,7 +611,7 @@ class SBOContext : IDisposable
             if (serie == 0) throw new Exception("A Série não está definida nas opções para este documento (POS).");
 
 
-            int DISTRIBUICAO = (short)header["DISTRIBUICAO"]; 
+            int DISTRIBUICAO = (short)header["DISTRIBUICAO"];
 
             SAPbobsCOM.Documents newDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
             newDoc.Series = serie;
@@ -599,28 +629,51 @@ class SBOContext : IDisposable
             newDoc.UserFields.Fields.Item("U_apyUSER").Value = (string)header["CREATED_BY_NAME"];
             if ((string)header["MATRICULA"] != "") newDoc.UserFields.Fields.Item("U_apyMATRICULA").Value = (string)header["MATRICULA"];
 
-            foreach (DataRow line in detailsDt.Rows)
+
+
+            // preform checks by item total
+            foreach (DataRow itemTotal in itemTotalsDt.Rows)
             {
+                var ITEMCODE = (string)itemTotal["ITEMCODE"];
+                var ITEMNAME = (string)itemTotal["ITEMNAME"];
+                var QTSTK = (double)(decimal)itemTotal["QTSTK"];  
+                 
                 if (objCode == "14")
                 {
-                    string CardCode = (string)line["CardCode"];
+                    string CardCode = (string)itemTotal["CardCode"];
                     if (newDoc.CardCode != CardCode) throw new Exception("Encontrada referência a documento de outra entidade: " + CardCode);
+
+                    double QuantityAvailableSAP = (double)(decimal)itemTotal["QuantityAvailableSAP"];
+                    if (QTSTK > QuantityAvailableSAP) throw new Exception("Não pode devolver mias que " + QuantityAvailableSAP + " UN do artigo " + ITEMNAME);
                 }
+            }
+
+            foreach (DataRow line in detailsDt.Rows)
+            {
+              
+                var ITEMCODE = (string)line["ITEMCODE"];
+                var ITEMNAME = (string)line["ITEMNAME"];
                 var QTCX = (double)(decimal)line["QTCX"];   // Num caixas/pack
                 var QTPK = (double)(decimal)line["QTPK"];
                 var QTSTK = (double)(decimal)line["QTSTK"];
                 var QTBONUS = (double)(decimal)line["QTBONUS"];
+                var PRICE = (double)(decimal)line["PRICE"];
+                bool MUST_HAVE_PRICE = (string)line["MUST_HAVE_PRICE"] == "Y";
+
+
+                if (MUST_HAVE_PRICE && PRICE <= 0)  throw new Exception("O artigo "+ITEMNAME+" tem que ter preço.");
+
 
                 if (QTSTK != 0)
                 {
                     if (newDoc.Lines.ItemCode != "") newDoc.Lines.Add();
-                    newDoc.Lines.ItemCode = (string)line["ITEMCODE"];
-                    newDoc.Lines.ItemDescription = (string)line["ITEMNAME"];
+                    newDoc.Lines.ItemCode = ITEMCODE;
+                    newDoc.Lines.ItemDescription = ITEMNAME;
                     newDoc.Lines.MeasureUnit = (string)line["InvntryUom"];
                     newDoc.Lines.Factor1 = QTCX;   // Num caixas/pack
                     newDoc.Lines.Factor2 = QTPK;   // Qdd por Caixa/pack 
                     //newDoc.Lines.InventoryQuantity = (double)(decimal)line["QTSTK"]; //Definir sobrepoe os fatores 1 e 2
-                    newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
+                    newDoc.Lines.UnitPrice = PRICE;
                     newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
                     newDoc.Lines.VatGroup = (string)line["VATGROUP"];
                     //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
@@ -634,7 +687,7 @@ class SBOContext : IDisposable
                     if ((string)line["PRICE_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyPRICECHBY").Value = (string)line["PRICE_CHANGEDBY"];
                     if ((string)line["DISC_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyDISCCHBY").Value = (string)line["DISC_CHANGEDBY"];
 
-                    if (objCode == "14")
+                    if ((int)line["BASE_DOCENTRY"] !=0)
                     {
                         newDoc.Lines.UserFields.Fields.Item("U_apyBSTYPE").Value = (int)line["BASE_OBJTYPE"];
                         newDoc.Lines.UserFields.Fields.Item("U_apyBSENTRY").Value = (int)line["BASE_DOCENTRY"];
