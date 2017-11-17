@@ -18,58 +18,45 @@ public class Result
 [ServiceContract]
 public interface I_SappyWcf
 {
-
-
     [OperationContract]
-    [WebInvoke(Method = "GET",
-        ResponseFormat = WebMessageFormat.Json,
-        UriTemplate = "{empresa}/GetPdf({docCode})")]
+    [WebInvoke(Method = "GET", UriTemplate = "{empresa}/GetPdf({docCode})", ResponseFormat = WebMessageFormat.Json)]
     Stream GetPdf(string empresa, string docCode);
-     
+
     [OperationContract]
-    [WebInvoke(Method = "POST",
-        ResponseFormat = WebMessageFormat.Json,
-        BodyStyle = WebMessageBodyStyle.Bare,
-        UriTemplate = "{empresa}/print({docCode})")]
+    [WebInvoke(Method = "GET", UriTemplate = "{empresa}/ReportExport/{docCode}/{format}", ResponseFormat = WebMessageFormat.Json)]
+    Stream ReportExport(string empresa, string docCode, string format);
+
+    [OperationContract]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/ReportPrint/{docCode}", ResponseFormat = WebMessageFormat.Json)]
+    bool ReportPrint(string empresa, string docCode);
+
+    [OperationContract]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/print({docCode})", ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
     bool Print(string empresa, string docCode);
 
     [OperationContract]
-    [WebInvoke(Method = "GET",
-        ResponseFormat = WebMessageFormat.Json,
-        BodyStyle = WebMessageBodyStyle.Bare,
-        UriTemplate = "{empresa}/GetPdfParameters({docCode})")]
-    string GetPdfParameters(string empresa, string docCode);
+    [WebInvoke(Method = "GET", UriTemplate = "{empresa}/GetReportParameters/{docCode}", ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
+    string GetReportParameters(string empresa, string docCode);
 
     [OperationContract]
-    [WebInvoke(Method = "POST",
-        RequestFormat = WebMessageFormat.Json,
-        ResponseFormat = WebMessageFormat.Json,
-        BodyStyle = WebMessageBodyStyle.WrappedRequest,
-        UriTemplate = "{empresa}/AddDoc/{objCode}/{draftId}?expectedTotal={expectedTotal}")]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/AddDoc/{objCode}/{draftId}?expectedTotal={expectedTotal}", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.WrappedRequest)]
     string AddDoc(string empresa, string objCode, string draftId, string expectedTotal);
+
     [OperationContract]
-    [WebInvoke(Method = "POST",
-        RequestFormat = WebMessageFormat.Json,
-        ResponseFormat = WebMessageFormat.Json,
-        BodyStyle = WebMessageBodyStyle.WrappedRequest,
-        UriTemplate = "{empresa}/AddDocPOS/{objCode}/{draftId}?expectedTotal={expectedTotal}")]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/AddDocPOS/{objCode}/{draftId}?expectedTotal={expectedTotal}", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.WrappedRequest)]
     string AddDocPOS(string empresa, string objCode, string draftId, string expectedTotal);
 
     [OperationContract]
-    [WebInvoke(Method = "POST",
-        RequestFormat = WebMessageFormat.Json,
-        ResponseFormat = WebMessageFormat.Json,
-        BodyStyle = WebMessageBodyStyle.WrappedRequest,
-        UriTemplate = "{empresa}/SimulateDoc/{objCode}/{draftId}")]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/SimulateDoc/{objCode}/{draftId}", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.WrappedRequest)]
     string SimulateDoc(string empresa, string objCode, string draftId);
 
     [OperationContract]
-    [WebInvoke(Method = "PATCH",
-        RequestFormat = WebMessageFormat.Json,
-        ResponseFormat = WebMessageFormat.Json,
-        BodyStyle = WebMessageBodyStyle.WrappedRequest,
-        UriTemplate = "{empresa}/PatchDoc/{objCode}/{docEntry}")]
+    [WebInvoke(Method = "PATCH", UriTemplate = "{empresa}/PatchDoc/{objCode}/{docEntry}", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.WrappedRequest)]
     string PatchDoc(string empresa, string objCode, string docEntry);
+
+    [OperationContract]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/CancelDoc/{objCode}/{docEntry}", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.WrappedRequest)]
+    string CancelDoc(string empresa, string objCode, string docEntry);
 
     [OperationContract]
     [WebInvoke(Method = "GET", UriTemplate = "printers", ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]

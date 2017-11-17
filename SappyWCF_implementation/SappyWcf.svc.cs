@@ -57,6 +57,117 @@ public class SappyWcf : I_SappyWcf
         }
     }
 
+    public Stream ReportExport(string empresa, string docCode, string format)
+    {
+        string sInfo = "ReportExport";
+        Logger.LogInvoke(sInfo, empresa, docCode);
+
+        try
+        {
+            using (HelperCrystalReports crw = new HelperCrystalReports())
+            {
+                var rptFile = crw.GetSAPReportTemplate(empresa, docCode);
+                crw.OpenReport(rptFile, empresa);
+                crw.setParametersDynamically(empresa, docCode);
+
+                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exported");
+                if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+
+
+                ExportFormatType formatType;
+                string outFile;
+                if (format == "xls")
+                {
+                    WebOperationContext.Current.OutgoingResponse.ContentType = "application/vnd.ms-excel";
+                    outFile = Path.Combine(path, Guid.NewGuid().ToString() + ".xls");
+                    formatType = ExportFormatType.Excel;
+                }
+                else if (format == "doc")
+                {
+                    WebOperationContext.Current.OutgoingResponse.ContentType = "application/msword";
+                    outFile = Path.Combine(path, Guid.NewGuid().ToString() + ".doc");
+                    formatType = ExportFormatType.WordForWindows;
+                }
+                else if (format == "csv")
+                {
+                    WebOperationContext.Current.OutgoingResponse.ContentType = "text/csv";
+                    outFile = Path.Combine(path, Guid.NewGuid().ToString() + ".csv");
+                    formatType = ExportFormatType.CharacterSeparatedValues;
+                } 
+                else if (format == "rpt")
+                {
+                    WebOperationContext.Current.OutgoingResponse.ContentType = "application/octet-stream";
+                    outFile = Path.Combine(path, Guid.NewGuid().ToString() + ".rpt");
+                    formatType = ExportFormatType.CrystalReport;
+                }
+                else if (format == "rtf")
+                {
+                    WebOperationContext.Current.OutgoingResponse.ContentType = "application/rtf";
+                    outFile = Path.Combine(path, Guid.NewGuid().ToString() + ".rtf");
+                    formatType = ExportFormatType.EditableRTF;
+                }
+                else  
+                {
+                    WebOperationContext.Current.OutgoingResponse.ContentType = "application/pdf";
+                    outFile = Path.Combine(path, Guid.NewGuid().ToString() + ".pdf");
+                    formatType = ExportFormatType.PortableDocFormat;
+                }
+
+                Logger.Log.Debug("Create " + outFile);
+                
+                crw.rptDoc.ExportToDisk(formatType, outFile);
+
+                // Return the doc
+                Logger.LogResult(sInfo, new Object());
+
+                return new FileStream_ThatDeletesFileAfterReading(outFile, FileMode.Open, FileAccess.Read);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Logger.Log.Error(ex.Message, ex);
+            throw new WebFaultException<string>(ex.Message, HttpStatusCode.InternalServerError);
+        }
+    }
+
+
+    public bool ReportPrint(string empresa, string docCode)
+    {
+        string sInfo = "Print";
+        try
+        {
+            Logger.LogInvoke(sInfo, empresa, docCode);
+
+            using (HelperCrystalReports crw = new HelperCrystalReports())
+            {
+                string toPrinter = WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters["toPrinter"];
+                string toPrinterTaloes = WebOperationContext.Current.IncomingRequest.UriTemplateMatch.QueryParameters["toPrinterTaloes"];
+
+                var fname = crw.GetSAPReportTemplate(empresa, docCode);
+                crw.OpenReport(fname, empresa);
+                crw.setParametersDynamically(empresa, docCode);
+
+                CrystalDecisions.ReportAppServer.Controllers.PrintReportOptions popt = new CrystalDecisions.ReportAppServer.Controllers.PrintReportOptions();
+
+                if (crw.rptDoc.SummaryInfo.KeywordsInReport != null &&
+                    crw.rptDoc.SummaryInfo.KeywordsInReport.Contains("USE_POS_PRINTER") &&
+                    toPrinterTaloes != "")
+                    popt.PrinterName = toPrinterTaloes;
+                else if (toPrinter != "")
+                    popt.PrinterName = toPrinter;
+
+                crw.rptDoc.ReportClientDocument.PrintOutputController.PrintReport(popt);
+
+                return true;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Logger.Log.Error(ex.Message, ex);
+
+            throw new WebFaultException<string>(ex.Message, HttpStatusCode.InternalServerError);
+        }
+    }
 
     public bool Print(string empresa, string docCode)
     {
@@ -96,9 +207,9 @@ public class SappyWcf : I_SappyWcf
         }   
     }
 
-    public string GetPdfParameters(string empresa, string docCode)
+    public string GetReportParameters(string empresa, string docCode)
     {
-        string sInfo = "GetPdfParameters";
+        string sInfo = "GetReportParameters";
         Logger.LogInvoke(sInfo, empresa, docCode);
         try
         {
@@ -283,6 +394,49 @@ public class SappyWcf : I_SappyWcf
         return Logger.FormatToJson(result);
 
     }
+
+    public string CancelDoc(string empresa, string objCode, string docEntry)
+    {
+        Result result = new Result();
+        string sInfo = "CancelDoc";
+        Logger.LogInvoke(sInfo, empresa, objCode, docEntry);
+
+        if (!SBOHandler.DIAPIConnections.ContainsKey(empresa))
+            result.error = "Empresa não configurada ou inexistente.";
+        else
+        {
+
+            var sboCon = SBOHandler.DIAPIConnections[empresa];
+
+            if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
+            {
+                try
+                {
+                    int DocEntry = Convert.ToInt32(docEntry);
+
+                    result.result = sboCon.SAPDOC_CANCELDOC(objCode, DocEntry);
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.Log.Error(ex.Message, ex);
+                    result.error = ex.Message;
+                }
+                finally
+                {
+                    Monitor.Exit(sboCon);
+                }
+            }
+            else
+            {
+                result.error = "Busy, please try again later...";
+            }
+        }
+
+        Logger.LogResult(sInfo, result);
+        return Logger.FormatToJson(result);
+
+    }
+
 
     public string GetPrinters()
     {

@@ -520,7 +520,7 @@ class SBOContext : IDisposable
         sql += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_SETTINGS ";
         sql += "\n WHERE ID IN ('POS.CFINAL.CARDCODE'";
         sql += "\n             ,'POS.CFINAL.SERIE13'";
-        sql += "\n             ,'DOC.OBJTYPE" + objCode + ".SERIE'";
+        sql += "\n             ,'POS.GERAL.SERIE" + objCode + "'";
         sql += "\n             ,'POS.GERAL.COND_ITEMS_WITHOUT_PRICE')";
         using (HelperOdbc dataLayer = new HelperOdbc())
         using (DataTable dt = dataLayer.Execute(sql))
@@ -529,7 +529,7 @@ class SBOContext : IDisposable
             {
                 if ((string)row["ID"] == "POS.CFINAL.CARDCODE") CFINAL_CARDCODE = (string)row["RAW_VALUE"];
                 if ((string)row["ID"] == "POS.CFINAL.SERIE13") CFINAL_SERIE13 = Convert.ToInt32(row["RAW_VALUE"]);
-                if ((string)row["ID"] == "DOC.OBJTYPE" + objCode + ".SERIE") DOC_SERIE = Convert.ToInt32(row["RAW_VALUE"]);
+                if ((string)row["ID"] == "POS.GERAL.SERIE" + objCode ) DOC_SERIE = Convert.ToInt32(row["RAW_VALUE"]);
                 if ((string)row["ID"] == "POS.GERAL.COND_ITEMS_WITHOUT_PRICE") COND_ITEMS_WITHOUT_PRICE = (string)row["RAW_VALUE"];
             }
         }
@@ -870,6 +870,61 @@ class SBOContext : IDisposable
                 if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
             }
         }
+    }
+
+    internal AddDocResult SAPDOC_CANCELDOC(string objCode, int docEntry)
+    {
+
+        int objType = Convert.ToInt32(objCode);
+        if (objType.ToString() != objCode) throw new Exception("objCode " + objCode + " is diferent of " + objType.ToString());
+
+        int priceDecimals = 6;
+        {
+            var s = this.company.GetCompanyService();
+            var ai = s.GetAdminInfo();
+            priceDecimals = ai.PriceAccuracy;
+        }
+
+ 
+
+            SAPbobsCOM.Documents origDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
+
+            if (origDoc.GetByKey(docEntry) == false)
+                throw new Exception("Não foi possível obter o documento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+
+        SAPbobsCOM.Documents sapDoc = origDoc.CreateCancellationDocument();
+
+
+        try
+        {
+                this.company.StartTransaction();
+    
+                if (sapDoc.Add() != 0)
+                {
+                    var ex = new Exception("Não foi possível cancelar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    throw ex;
+                }
+                
+                AddDocResult result = new AddDocResult(); 
+
+                this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+             
+                result.DocEntry = sapDoc.DocEntry;
+                result.DocNum = sapDoc.DocNum;
+
+                result.DocTotal = sapDoc.DocTotal;
+                result.DiscountPercent = sapDoc.DiscountPercent;
+                result.TotalDiscount = sapDoc.TotalDiscount;
+                result.VatSum = sapDoc.VatSum;
+                result.RoundingDiffAmount = sapDoc.RoundingDiffAmount;
+                return result;
+            }
+            finally
+            {
+                if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+            }
+       
     }
 
     internal AddDocResult ADD_ADIANTAMENTO_PARA_DESPESAS(PostAdiantamentoInput data)
