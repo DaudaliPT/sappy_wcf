@@ -15,3 +15,5 @@ debug/
 obj/ 
 
 staticDomains/
+/.vs/SappyWCF2017/v15
+/.vs/SappyWCF/v15/.suo

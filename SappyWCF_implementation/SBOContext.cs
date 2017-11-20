@@ -9,6 +9,7 @@ using System.Data;
 class SBOContext : IDisposable
 {
     private SAPbobsCOM.Company company = null;
+
     internal SBOContext(string companydb)
     {
         //if (Thread.CurrentThread.GetApartmentState().ToString() != "STA")
@@ -465,12 +466,21 @@ class SBOContext : IDisposable
             finally
             {
                 if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+
+                if (newDoc != null) Marshal.ReleaseComObject(newDoc);
+                if (invEntry != null) Marshal.ReleaseComObject(newDoc);
+                if (invReval != null) Marshal.ReleaseComObject(newDoc);
+                if (invExit != null) Marshal.ReleaseComObject(newDoc);
+                newDoc = null;
+                invEntry = null;
+                invReval = null;
+                invExit = null;
+                 
+                GC.Collect();
             }
         }
     }
-
-
-
+    
     internal string GetLayoutCode(string TypeCode)
     {
         SAPbobsCOM.Recordset rec = null;
@@ -502,7 +512,6 @@ class SBOContext : IDisposable
 
     internal AddDocResult SAPDOC_FROM_SAPPY_DRAFT_POS(DocActions action, string objCode, int draftId, double expectedTotal)
     {
-
         int priceDecimals = 6;
         {
             var s = this.company.GetCompanyService();
@@ -612,6 +621,7 @@ class SBOContext : IDisposable
 
 
             int DISTRIBUICAO = (short)header["DISTRIBUICAO"];
+
 
             SAPbobsCOM.Documents newDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
             newDoc.Series = serie;
@@ -780,6 +790,9 @@ class SBOContext : IDisposable
             finally
             {
                 if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+                if (newDoc != null) Marshal.ReleaseComObject(newDoc);
+                newDoc = null;
+                GC.Collect();
             }
         }
     }
@@ -885,51 +898,109 @@ class SBOContext : IDisposable
             priceDecimals = ai.PriceAccuracy;
         }
 
- 
 
-            SAPbobsCOM.Documents origDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
 
-            if (origDoc.GetByKey(docEntry) == false)
-                throw new Exception("Não foi possível obter o documento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+        SAPbobsCOM.Documents origDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
+
+        if (origDoc.GetByKey(docEntry) == false)
+            throw new Exception("Não foi possível obter o documento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
 
 
         SAPbobsCOM.Documents sapDoc = origDoc.CreateCancellationDocument();
 
+        if (sapDoc == null)
+            throw new Exception("Este documento não pode ser cancelado: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
 
         try
         {
-                this.company.StartTransaction();
-    
-                if (sapDoc.Add() != 0)
-                {
-                    var ex = new Exception("Não foi possível cancelar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
-                    throw ex;
-                }
-                
-                AddDocResult result = new AddDocResult(); 
+            this.company.StartTransaction();
 
-                this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
-             
-                result.DocEntry = sapDoc.DocEntry;
-                result.DocNum = sapDoc.DocNum;
-
-                result.DocTotal = sapDoc.DocTotal;
-                result.DiscountPercent = sapDoc.DiscountPercent;
-                result.TotalDiscount = sapDoc.TotalDiscount;
-                result.VatSum = sapDoc.VatSum;
-                result.RoundingDiffAmount = sapDoc.RoundingDiffAmount;
-                return result;
-            }
-            finally
+            if (sapDoc.Add() != 0)
             {
-                if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+                var ex = new Exception("Não foi possível cancelar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                throw ex;
             }
-       
+
+            AddDocResult result = new AddDocResult();
+
+            this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+
+            result.DocEntry = sapDoc.DocEntry;
+            result.DocNum = sapDoc.DocNum;
+
+            result.DocTotal = sapDoc.DocTotal;
+            result.DiscountPercent = sapDoc.DiscountPercent;
+            result.TotalDiscount = sapDoc.TotalDiscount;
+            result.VatSum = sapDoc.VatSum;
+            result.RoundingDiffAmount = sapDoc.RoundingDiffAmount;
+            return result;
+        }
+        finally
+        {
+            if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+            if (origDoc != null) Marshal.ReleaseComObject(origDoc);
+            if (sapDoc != null) Marshal.ReleaseComObject(sapDoc);
+            origDoc = null;
+            sapDoc = null;
+            GC.Collect();
+        }
+
+    }
+
+    internal AddDocResult SAPDOC_CLOSEDOC(string objCode, int docEntry)
+    {
+        int objType = Convert.ToInt32(objCode);
+        if (objType.ToString() != objCode) throw new Exception("objCode " + objCode + " is diferent of " + objType.ToString());
+
+        int priceDecimals = 6;
+        {
+            var s = this.company.GetCompanyService();
+            var ai = s.GetAdminInfo();
+            priceDecimals = ai.PriceAccuracy;
+        }
+        
+        SAPbobsCOM.Documents sapDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
+
+        if (sapDoc.GetByKey(docEntry) == false)
+            throw new Exception("Não foi possível obter o documento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+        
+        try
+        {
+            this.company.StartTransaction();
+
+            if (sapDoc.Close() != 0)
+            {
+                var ex = new Exception("Não foi possível fechar documento em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                throw ex;
+            }
+
+            AddDocResult result = new AddDocResult();
+
+            this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+
+            result.DocEntry = sapDoc.DocEntry;
+            result.DocNum = sapDoc.DocNum;
+
+            result.DocTotal = sapDoc.DocTotal;
+            result.DiscountPercent = sapDoc.DiscountPercent;
+            result.TotalDiscount = sapDoc.TotalDiscount;
+            result.VatSum = sapDoc.VatSum;
+            result.RoundingDiffAmount = sapDoc.RoundingDiffAmount;
+            return result;
+        }
+        finally
+        {
+            if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+            if (sapDoc != null) Marshal.ReleaseComObject(sapDoc);
+            sapDoc = null;
+            GC.Collect();
+        }
+
     }
 
     internal AddDocResult ADD_ADIANTAMENTO_PARA_DESPESAS(PostAdiantamentoInput data)
     {
-
         SAPbobsCOM.Payments sapDoc = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oVendorPayments);
 
         sapDoc.DocType = SAPbobsCOM.BoRcptTypes.rSupplier;
@@ -991,8 +1062,7 @@ class SBOContext : IDisposable
         }
 
     }
-
-
+    
     internal AddDocResult FECHAR_ADIANTAMENTO_PARA_DESPESAS(PostFecharAdiantamentoInput data)
     {
 
@@ -1066,8 +1136,7 @@ class SBOContext : IDisposable
         }
 
     }
-
-
+    
     internal AddDocResult ADD_DESPESA(PostDespesaInput data)
     {
         double totalFactura = 0;

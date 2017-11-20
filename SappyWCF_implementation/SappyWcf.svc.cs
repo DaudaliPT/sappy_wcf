@@ -437,6 +437,47 @@ public class SappyWcf : I_SappyWcf
 
     }
 
+    public string CloseDoc(string empresa, string objCode, string docEntry)
+    {
+        Result result = new Result();
+        string sInfo = "CloseDoc";
+        Logger.LogInvoke(sInfo, empresa, objCode, docEntry);
+
+        if (!SBOHandler.DIAPIConnections.ContainsKey(empresa))
+            result.error = "Empresa não configurada ou inexistente.";
+        else
+        {
+
+            var sboCon = SBOHandler.DIAPIConnections[empresa];
+
+            if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
+            {
+                try
+                {
+                    int DocEntry = Convert.ToInt32(docEntry);
+
+                    result.result = sboCon.SAPDOC_CLOSEDOC(objCode, DocEntry);
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.Log.Error(ex.Message, ex);
+                    result.error = ex.Message;
+                }
+                finally
+                {
+                    Monitor.Exit(sboCon);
+                }
+            }
+            else
+            {
+                result.error = "Busy, please try again later...";
+            }
+        }
+
+        Logger.LogResult(sInfo, result);
+        return Logger.FormatToJson(result);
+
+    }
 
     public string GetPrinters()
     {

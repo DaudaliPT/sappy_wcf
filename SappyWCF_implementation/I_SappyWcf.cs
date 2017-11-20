@@ -59,6 +59,10 @@ public interface I_SappyWcf
     string CancelDoc(string empresa, string objCode, string docEntry);
 
     [OperationContract]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/CloseDoc/{objCode}/{docEntry}", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.WrappedRequest)]
+    string CloseDoc(string empresa, string objCode, string docEntry);
+
+    [OperationContract]
     [WebInvoke(Method = "GET", UriTemplate = "printers", ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
     string GetPrinters();
 
