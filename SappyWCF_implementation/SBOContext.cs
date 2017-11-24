@@ -56,6 +56,37 @@ class SBOContext : IDisposable
         }
     }
 
+
+    internal string GetLayoutCode(string TypeCode)
+    {
+        SAPbobsCOM.Recordset rec = null;
+        try
+        {
+            SAPbobsCOM.CompanyService oCmpSrv = null;
+            SAPbobsCOM.ReportLayoutsService oReportLayoutService = null;
+            SAPbobsCOM.ReportParams oReportParam = null;
+            SAPbobsCOM.DefaultReportParams oReportParaDefault = null;
+            oCmpSrv = this.company.GetCompanyService();
+            oReportLayoutService = (SAPbobsCOM.ReportLayoutsService)oCmpSrv.GetBusinessService(SAPbobsCOM.ServiceTypes.ReportLayoutsService);
+            oReportParam = (SAPbobsCOM.ReportParams)oReportLayoutService.GetDataInterface(SAPbobsCOM.ReportLayoutsServiceDataInterfaces.rlsdiReportParams);
+            oReportParam.ReportCode = TypeCode;
+            oReportParam.UserID = this.company.UserSignature;
+            oReportParaDefault = oReportLayoutService.GetDefaultReport(oReportParam);
+            return oReportParaDefault.LayoutCode;
+        }
+        catch (Exception err)
+        {
+            throw new Exception("GetDocCode" + err.Message);
+        }
+        finally
+        {
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(rec);
+            rec = null;
+            System.GC.Collect();
+        }
+    }
+
+
     internal AddDocResult SAPDOC_FROM_SAPPY_DRAFT(DocActions action, string objCode, int draftId, double expectedTotal)
     {
         int priceDecimals = 6;
@@ -77,9 +108,16 @@ class SBOContext : IDisposable
         sqlDetail += "\n , OITM.\"InvntryUom\"";
         sqlDetail += "\n , OITW.\"OnHand\"";
         sqlDetail += "\n , OITW.\"AvgPrice\"";
+        sqlDetail += "\n      , BASEDOC.\"CardCode\" AS BASE_CARDCODE";
+        sqlDetail += "\n      , BASEDOC.QTYSTK_AVAILABLE_SAP";
+        sqlDetail += "\n      , BASEDOC.\"DocStatus\" AS BASE_DOCSTATUS";
         sqlDetail += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
         sqlDetail += "\n INNER JOIN \"" + this.company.CompanyDB + "\".OITM OITM on T1.ITEMCODE = OITM.\"ItemCode\"";
         sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OITW OITW on T1.ITEMCODE = OITW.\"ItemCode\" AND T1.WHSCODE = OITW.\"WhsCode\"";
+        sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".SAPPY_LINE_LINK_" + objCode + " as BASEDOC ";
+        sqlDetail += "\n                ON T1.BASE_OBJTYPE  = BASEDOC.\"ObjType\"";
+        sqlDetail += "\n               AND T1.BASE_DOCENTRY = BASEDOC.\"DocEntry\"";
+        sqlDetail += "\n               AND T1.BASE_LINENUM  = BASEDOC.\"LineNum\"";
         sqlDetail += "\n WHERE T1.ID =" + draftId;
         sqlDetail += "\n ORDER BY T1.LINENUM";
 
@@ -97,10 +135,35 @@ class SBOContext : IDisposable
         sqlDetailNET += "\n , OITW.\"AvgPrice\"";
         sqlDetailNET += "\n ORDER BY MIN(T1.LINENUM)";
 
+        //// Validar os totais por Artigo relacionados com o documento Base
+        //var sqlTotalByItem = "SELECT T1.ITEMCODE";
+        //sqlTotalByItem += "\n      , max(T1.ITEMNAME) AS ITEMNAME";
+        //sqlTotalByItem += "\n      , T1.BASE_OBJTYPE";
+        //sqlTotalByItem += "\n      , T1.BASE_DOCENTRY";
+        //sqlTotalByItem += "\n      , T1.BASE_LINENUM";
+        //sqlTotalByItem += "\n      , BASEDOC.\"CardCode\"";
+        //sqlTotalByItem += "\n      , BASEDOC.QTYSTK_AVAILABLE_SAP";
+        //sqlTotalByItem += "\n      , SUM(T1.QTSTK) AS QTSTK";
+        //sqlTotalByItem += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
+        //sqlTotalByItem += "\n INNER JOIN \"" + this.company.CompanyDB + "\".SAPPY_LINE_LINK_" + objCode + " as BASEDOC ";
+        //sqlTotalByItem += "\n                ON T1.BASE_OBJTYPE  = BASEDOC.\"ObjType\"";
+        //sqlTotalByItem += "\n               AND T1.BASE_DOCENTRY = BASEDOC.\"DocEntry\"";
+        //sqlTotalByItem += "\n               AND T1.BASE_LINENUM  = BASEDOC.\"LineNum\"";
+        //sqlTotalByItem += "\n WHERE T1.ID =" + draftId;
+        //sqlTotalByItem += "\n GROUP BY T1.ITEMCODE";
+        //sqlTotalByItem += "\n      , T1.BASE_OBJTYPE";
+        //sqlTotalByItem += "\n      , T1.BASE_DOCENTRY";
+        //sqlTotalByItem += "\n      , T1.BASE_LINENUM";
+        //sqlTotalByItem += "\n      , BASEDOC.\"CardCode\"";
+        //sqlTotalByItem += "\n      , BASEDOC.\"QTYSTK_AVAILABLE_SAP\"";
+        //sqlTotalByItem += "\n ORDER BY min(T1.LINENUM)";
+
+
         using (HelperOdbc dataLayer = new HelperOdbc())
         using (DataTable headerDt = dataLayer.Execute(sqlHeader))
         using (DataTable detailsDt = dataLayer.Execute(sqlDetail))
         using (DataTable detailsDtNET = dataLayer.Execute(sqlDetailNET))
+        //using (DataTable itemTotalsDt = dataLayer.Execute(sqlTotalByItem))
         {
             DataRow header = headerDt.Rows[0];
 
@@ -129,6 +192,23 @@ class SBOContext : IDisposable
             newDoc.UserFields.Fields.Item("U_apyUSER").Value = (string)header["CREATED_BY_NAME"];
             newDoc.UserFields.Fields.Item("U_apyINCONF").Value = (short)header["HASINCONF"] == 1 ? "Y" : "N";
 
+
+
+            //// preform checks by item total
+            //foreach (DataRow itemTotal in itemTotalsDt.Rows)
+            //{
+            //    var ITEMCODE = (string)itemTotal["ITEMCODE"];
+            //    var ITEMNAME = (string)itemTotal["ITEMNAME"];
+            //    var QTSTK = (double)(decimal)itemTotal["QTSTK"];
+
+            //    string CardCode = (string)itemTotal["CardCode"];
+            //    if (CardCode != "" && newDoc.CardCode != CardCode) throw new Exception("Encontrada referência a documento de outra entidade: " + CardCode);
+
+            //    double QTYSTK_AVAILABLE_SAP = (double)(decimal)itemTotal["QTYSTK_AVAILABLE_SAP"];
+            //    if (QTSTK > QTYSTK_AVAILABLE_SAP) throw new Exception("Não pode relacionar mais que " + QTYSTK_AVAILABLE_SAP + " UN do artigo " + ITEMNAME + " com o documento base.");
+
+            //}
+
             foreach (DataRow line in detailsDt.Rows)
             {
                 var QTCX = (double)(decimal)line["QTCX"];   // Num caixas/pack
@@ -136,6 +216,7 @@ class SBOContext : IDisposable
                 var QTSTK = (double)(decimal)line["QTSTK"];
                 var QTBONUS = (double)(decimal)line["QTBONUS"];
                 var BONUS_NAP = (short)line["BONUS_NAP"];
+
 
                 if (QTSTK != 0)
                 {
@@ -164,7 +245,34 @@ class SBOContext : IDisposable
                     newDoc.Lines.UserFields.Fields.Item("U_apyNETTOT").Value = (double)(decimal)line["NETTOTAL"];
 
                     newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyIDPROMO").Value = (int)line["IDPROMO"];
+
                     newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
+
+                    if ((int)line["BASE_DOCENTRY"] != 0)
+                    {
+                        string BaseCardCode = (string)line["BASE_CARDCODE"];
+                        if (newDoc.CardCode != BaseCardCode) throw new Exception("Encontrada referência a documento de outra entidade: " + BaseCardCode);
+
+                        double QTYSTK_AVAILABLE_SAP = (double)(decimal)line["QTYSTK_AVAILABLE_SAP"];
+                        if (QTSTK > QTYSTK_AVAILABLE_SAP) throw new Exception("Não pode relacionar mais que " + QTYSTK_AVAILABLE_SAP + " UN do artigo " + (string)line["ITEMNAME"] + " com o documento base.");
+
+                        if ((string)line["BASE_DOCSTATUS"] != "O")
+                        {
+                            // fazer uma referência indirecta
+                            newDoc.Lines.UserFields.Fields.Item("U_apyBSTYPE").Value = (int)line["BASE_OBJTYPE"];
+                            newDoc.Lines.UserFields.Fields.Item("U_apyBSENTRY").Value = (int)line["BASE_DOCENTRY"];
+                            newDoc.Lines.UserFields.Fields.Item("U_apyBSLINE").Value = (int)line["BASE_LINENUM"];
+                            newDoc.Lines.UserFields.Fields.Item("U_apyBSNUM").Value = (int)line["BASE_DOCNUM"];
+                        }
+                        else
+                        {
+                            // Fazer uma referência directa do SAP B1
+                            newDoc.Lines.BaseType = (int)line["BASE_OBJTYPE"];
+                            newDoc.Lines.BaseEntry = (int)line["BASE_DOCENTRY"];
+                            newDoc.Lines.BaseLine = (int)line["BASE_LINENUM"];
+                        }
+                    }
                 }
                 if (QTBONUS != 0)
                 {
@@ -475,38 +583,9 @@ class SBOContext : IDisposable
                 invEntry = null;
                 invReval = null;
                 invExit = null;
-                 
+
                 GC.Collect();
             }
-        }
-    }
-    
-    internal string GetLayoutCode(string TypeCode)
-    {
-        SAPbobsCOM.Recordset rec = null;
-        try
-        {
-            SAPbobsCOM.CompanyService oCmpSrv = null;
-            SAPbobsCOM.ReportLayoutsService oReportLayoutService = null;
-            SAPbobsCOM.ReportParams oReportParam = null;
-            SAPbobsCOM.DefaultReportParams oReportParaDefault = null;
-            oCmpSrv = this.company.GetCompanyService();
-            oReportLayoutService = (SAPbobsCOM.ReportLayoutsService)oCmpSrv.GetBusinessService(SAPbobsCOM.ServiceTypes.ReportLayoutsService);
-            oReportParam = (SAPbobsCOM.ReportParams)oReportLayoutService.GetDataInterface(SAPbobsCOM.ReportLayoutsServiceDataInterfaces.rlsdiReportParams);
-            oReportParam.ReportCode = TypeCode;
-            oReportParam.UserID = this.company.UserSignature;
-            oReportParaDefault = oReportLayoutService.GetDefaultReport(oReportParam);
-            return oReportParaDefault.LayoutCode;
-        }
-        catch (Exception err)
-        {
-            throw new Exception("GetDocCode" + err.Message);
-        }
-        finally
-        {
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(rec);
-            rec = null;
-            System.GC.Collect();
         }
     }
 
@@ -520,11 +599,11 @@ class SBOContext : IDisposable
         }
 
 
-        string CFINAL_CARDCODE = ""; 
-        int CFINAL_SERIE13 = 0; 
+        string CFINAL_CARDCODE = "";
+        int CFINAL_SERIE13 = 0;
         int DOC_SERIE = 0;
         string COND_ITEMS_WITHOUT_PRICE = "";
-         
+
         var sql = "SELECT * ";
         sql += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_SETTINGS ";
         sql += "\n WHERE ID IN ('POS.CFINAL.CARDCODE'";
@@ -538,14 +617,14 @@ class SBOContext : IDisposable
             {
                 if ((string)row["ID"] == "POS.CFINAL.CARDCODE") CFINAL_CARDCODE = (string)row["RAW_VALUE"];
                 if ((string)row["ID"] == "POS.CFINAL.SERIE13") CFINAL_SERIE13 = Convert.ToInt32(row["RAW_VALUE"]);
-                if ((string)row["ID"] == "POS.GERAL.SERIE" + objCode ) DOC_SERIE = Convert.ToInt32(row["RAW_VALUE"]);
+                if ((string)row["ID"] == "POS.GERAL.SERIE" + objCode) DOC_SERIE = Convert.ToInt32(row["RAW_VALUE"]);
                 if ((string)row["ID"] == "POS.GERAL.COND_ITEMS_WITHOUT_PRICE") COND_ITEMS_WITHOUT_PRICE = (string)row["RAW_VALUE"];
             }
         }
         if (COND_ITEMS_WITHOUT_PRICE == "") COND_ITEMS_WITHOUT_PRICE = "1=0";// se não houver definição, esta expressão causa que todos tem que ter preço
 
         // Obter cabeçalho do documento a adicionar
-        var sqlHeader = "SELECT T0.* "; 
+        var sqlHeader = "SELECT T0.* ";
         sqlHeader += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC T0"; ;
         sqlHeader += "\n WHERE T0.ID =" + draftId;
 
@@ -553,50 +632,48 @@ class SBOContext : IDisposable
         var sqlDetail = "SELECT T1.*";
         sqlDetail += "\n , OITM.\"InvntryUom\"";
         sqlDetail += "\n , OITW.\"OnHand\"";
-        sqlDetail += "\n , OITW.\"AvgPrice\""; 
-        sqlDetail +="\n , CASE WHEN " + COND_ITEMS_WITHOUT_PRICE + " THEN 'N' ELSE 'Y' END AS MUST_HAVE_PRICE";
+        sqlDetail += "\n , OITW.\"AvgPrice\"";
+        sqlDetail += "\n      , BASEDOC.\"CardCode\" AS BASE_CARDCODE";
+        sqlDetail += "\n      , BASEDOC.QTYSTK_AVAILABLE_SAP";
+        sqlDetail += "\n      , BASEDOC.\"DocStatus\" AS BASE_DOCSTATUS";
+        sqlDetail += "\n , CASE WHEN " + COND_ITEMS_WITHOUT_PRICE + " THEN 'N' ELSE 'Y' END AS MUST_HAVE_PRICE";
         sqlDetail += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
         sqlDetail += "\n INNER JOIN \"" + this.company.CompanyDB + "\".OITM OITM on T1.ITEMCODE = OITM.\"ItemCode\"";
-        sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OITW OITW on T1.ITEMCODE = OITW.\"ItemCode\" AND T1.WHSCODE = OITW.\"WhsCode\""; 
+        sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".OITW OITW on T1.ITEMCODE = OITW.\"ItemCode\" AND T1.WHSCODE = OITW.\"WhsCode\"";
+        sqlDetail += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".SAPPY_LINE_LINK_" + objCode + " as BASEDOC ";
+        sqlDetail += "\n                ON T1.BASE_OBJTYPE  = BASEDOC.\"ObjType\"";
+        sqlDetail += "\n               AND T1.BASE_DOCENTRY = BASEDOC.\"DocEntry\"";
+        sqlDetail += "\n               AND T1.BASE_LINENUM  = BASEDOC.\"LineNum\"";
         sqlDetail += "\n WHERE T1.ID =" + draftId;
         sqlDetail += "\n ORDER BY T1.LINENUM";
 
-        // Validar os totais por Artigo
-        var sqlTotalByItem = "SELECT T1.ITEMCODE";
-        sqlTotalByItem += "\n      , max(T1.ITEMNAME) AS ITEMNAME";
-        sqlTotalByItem += "\n      , T1.BASE_OBJTYPE";
-        sqlTotalByItem += "\n      , T1.BASE_DOCENTRY";
-        sqlTotalByItem += "\n      , T1.BASE_LINENUM";
-        if (objCode == "14")
-        {
-            sqlTotalByItem += "\n , BASEDOC.\"CardCode\"";
-            sqlTotalByItem += "\n , BASEDOC.\"QuantityAvailableSAP\"";
-        }
-        sqlTotalByItem += "\n      , SUM(QTSTK) AS QTSTK";
-        sqlTotalByItem += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";  
-        if (objCode == "14")
-        {
-            sqlTotalByItem += "\n LEFT JOIN \"" + this.company.CompanyDB + "\".SAPPY_LINE_LINK_13_14 as BASEDOC ";
-            sqlTotalByItem += "\n                ON T1.BASE_OBJTYPE  = BASEDOC.\"ObjType\"";
-            sqlTotalByItem += "\n               AND T1.BASE_DOCENTRY = BASEDOC.\"DocEntry\"";
-            sqlTotalByItem += "\n               AND T1.BASE_LINENUM  = BASEDOC.\"LineNum\"";
-        }
-        sqlTotalByItem += "\n WHERE T1.ID =" + draftId;
-        sqlTotalByItem += "\n GROUP BY T1.ITEMCODE";
-        sqlTotalByItem += "\n      , T1.BASE_OBJTYPE";
-        sqlTotalByItem += "\n      , T1.BASE_DOCENTRY";
-        sqlTotalByItem += "\n      , T1.BASE_LINENUM";
-        if (objCode == "14")
-        {
-            sqlTotalByItem += "\n , BASEDOC.\"CardCode\"";
-            sqlTotalByItem += "\n , BASEDOC.\"QuantityAvailableSAP\"";
-        }
-        sqlTotalByItem += "\n ORDER BY min(T1.LINENUM)";
+        //// Validar os totais por Artigo relacionados com o documento Base
+        //var sqlTotalByItem = "SELECT T1.ITEMCODE";
+        //sqlTotalByItem += "\n      , max(T1.ITEMNAME) AS ITEMNAME";
+        //sqlTotalByItem += "\n      , T1.BASE_OBJTYPE";
+        //sqlTotalByItem += "\n      , T1.BASE_DOCENTRY";
+        //sqlTotalByItem += "\n      , T1.BASE_LINENUM";
+        //sqlTotalByItem += "\n      , BASEDOC.\"CardCode\"";
+        //sqlTotalByItem += "\n      , BASEDOC.QTYSTK_AVAILABLE_SAP";
+        //sqlTotalByItem += "\n      , SUM(T1.QTSTK) AS QTSTK";
+        //sqlTotalByItem += "\n FROM \"" + this.company.CompanyDB + "\".SAPPY_DOC_LINES T1";
+        //sqlTotalByItem += "\n INNER JOIN \"" + this.company.CompanyDB + "\".SAPPY_LINE_LINK_" + objCode + " as BASEDOC ";
+        //sqlTotalByItem += "\n                ON T1.BASE_OBJTYPE  = BASEDOC.\"ObjType\"";
+        //sqlTotalByItem += "\n               AND T1.BASE_DOCENTRY = BASEDOC.\"DocEntry\"";
+        //sqlTotalByItem += "\n               AND T1.BASE_LINENUM  = BASEDOC.\"LineNum\"";
+        //sqlTotalByItem += "\n WHERE T1.ID =" + draftId;
+        //sqlTotalByItem += "\n GROUP BY T1.ITEMCODE";
+        //sqlTotalByItem += "\n      , T1.BASE_OBJTYPE";
+        //sqlTotalByItem += "\n      , T1.BASE_DOCENTRY";
+        //sqlTotalByItem += "\n      , T1.BASE_LINENUM";
+        //sqlTotalByItem += "\n      , BASEDOC.\"CardCode\"";
+        //sqlTotalByItem += "\n      , BASEDOC.\"QTYSTK_AVAILABLE_SAP\"";
+        //sqlTotalByItem += "\n ORDER BY min(T1.LINENUM)";
 
         using (HelperOdbc dataLayer = new HelperOdbc())
         using (DataTable headerDt = dataLayer.Execute(sqlHeader))
         using (DataTable detailsDt = dataLayer.Execute(sqlDetail))
-        using (DataTable itemTotalsDt = dataLayer.Execute(sqlTotalByItem))
+        //using (DataTable itemTotalsDt = dataLayer.Execute(sqlTotalByItem))
         {
             DataRow header = headerDt.Rows[0];
 
@@ -615,7 +692,7 @@ class SBOContext : IDisposable
             }
             else
             {
-                serie = DOC_SERIE; 
+                serie = DOC_SERIE;
             }
             if (serie == 0) throw new Exception("A Série não está definida nas opções para este documento (POS).");
 
@@ -641,26 +718,24 @@ class SBOContext : IDisposable
 
 
 
-            // preform checks by item total
-            foreach (DataRow itemTotal in itemTotalsDt.Rows)
-            {
-                var ITEMCODE = (string)itemTotal["ITEMCODE"];
-                var ITEMNAME = (string)itemTotal["ITEMNAME"];
-                var QTSTK = (double)(decimal)itemTotal["QTSTK"];  
-                 
-                if (objCode == "14")
-                {
-                    string CardCode = (string)itemTotal["CardCode"];
-                    if (newDoc.CardCode != CardCode) throw new Exception("Encontrada referência a documento de outra entidade: " + CardCode);
+            //// preform checks by item total
+            //foreach (DataRow itemTotal in itemTotalsDt.Rows)
+            //{
+            //    var ITEMCODE = (string)itemTotal["ITEMCODE"];
+            //    var ITEMNAME = (string)itemTotal["ITEMNAME"];
+            //    var QTSTK = (double)(decimal)itemTotal["QTSTK"];
 
-                    double QuantityAvailableSAP = (double)(decimal)itemTotal["QuantityAvailableSAP"];
-                    if (QTSTK > QuantityAvailableSAP) throw new Exception("Não pode devolver mias que " + QuantityAvailableSAP + " UN do artigo " + ITEMNAME);
-                }
-            }
+            //    string CardCode = (string)itemTotal["CardCode"];
+            //    if (CardCode != "" && newDoc.CardCode != CardCode) throw new Exception("Encontrada referência a documento de outra entidade: " + CardCode);
+
+            //    double QTYSTK_AVAILABLE_SAP = (double)(decimal)itemTotal["QTYSTK_AVAILABLE_SAP"];
+            //    if (QTSTK > QTYSTK_AVAILABLE_SAP) throw new Exception("Não pode relacionar mais que " + QTYSTK_AVAILABLE_SAP + " UN do artigo " + ITEMNAME + " com o documento base.");
+
+            //}
 
             foreach (DataRow line in detailsDt.Rows)
             {
-              
+
                 var ITEMCODE = (string)line["ITEMCODE"];
                 var ITEMNAME = (string)line["ITEMNAME"];
                 var QTCX = (double)(decimal)line["QTCX"];   // Num caixas/pack
@@ -671,7 +746,7 @@ class SBOContext : IDisposable
                 bool MUST_HAVE_PRICE = (string)line["MUST_HAVE_PRICE"] == "Y";
 
 
-                if (MUST_HAVE_PRICE && PRICE <= 0)  throw new Exception("O artigo "+ITEMNAME+" tem que ter preço.");
+                if (MUST_HAVE_PRICE && PRICE <= 0) throw new Exception("O artigo " + ITEMNAME + " tem que ter preço.");
 
 
                 if (QTSTK != 0)
@@ -688,22 +763,40 @@ class SBOContext : IDisposable
                     newDoc.Lines.VatGroup = (string)line["VATGROUP"];
                     //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
 
-                    newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
 
                     // newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
                     newDoc.Lines.DiscountPercent = (double)(decimal)line["DISCOUNT"];
 
+                    newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
                     newDoc.Lines.UserFields.Fields.Item("U_apyIDPROMO").Value = (int)line["IDPROMO"];
                     if ((string)line["PRICE_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyPRICECHBY").Value = (string)line["PRICE_CHANGEDBY"];
                     if ((string)line["DISC_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyDISCCHBY").Value = (string)line["DISC_CHANGEDBY"];
 
-                    if ((int)line["BASE_DOCENTRY"] !=0)
+                    if ((int)line["BASE_DOCENTRY"] != 0)
                     {
-                        newDoc.Lines.UserFields.Fields.Item("U_apyBSTYPE").Value = (int)line["BASE_OBJTYPE"];
-                        newDoc.Lines.UserFields.Fields.Item("U_apyBSENTRY").Value = (int)line["BASE_DOCENTRY"];
-                        newDoc.Lines.UserFields.Fields.Item("U_apyBSLINE").Value = (int)line["BASE_LINENUM"];
+                        string BaseCardCode = (string)line["BASE_CARDCODE"];
+                        if (newDoc.CardCode != BaseCardCode) throw new Exception("Encontrada referência a documento de outra entidade: " + BaseCardCode);
+
+                        double QTYSTK_AVAILABLE_SAP = (double)(decimal)line["QTYSTK_AVAILABLE_SAP"];
+                        if (QTSTK > QTYSTK_AVAILABLE_SAP) throw new Exception("Não pode relacionar mais que " + QTYSTK_AVAILABLE_SAP + " UN do artigo " + ITEMNAME + " com o documento base.");
+
+                        if ((string)line["BASE_DOCSTATUS"] != "O")
+                        {
+                            // fazer uma referência indirecta
+                            newDoc.Lines.UserFields.Fields.Item("U_apyBSTYPE").Value = (int)line["BASE_OBJTYPE"];
+                            newDoc.Lines.UserFields.Fields.Item("U_apyBSENTRY").Value = (int)line["BASE_DOCENTRY"];
+                            newDoc.Lines.UserFields.Fields.Item("U_apyBSLINE").Value = (int)line["BASE_LINENUM"];
+                            newDoc.Lines.UserFields.Fields.Item("U_apyBSNUM").Value = (int)line["BASE_DOCNUM"];
+                        }
+                        else
+                        {
+                            // Fazer uma referência directa do SAP B1
+                            newDoc.Lines.BaseType = (int)line["BASE_OBJTYPE"];
+                            newDoc.Lines.BaseEntry = (int)line["BASE_DOCENTRY"];
+                            newDoc.Lines.BaseLine = (int)line["BASE_LINENUM"];
+                        }
                     }
-                } 
+                }
             }
 
 
@@ -900,41 +993,71 @@ class SBOContext : IDisposable
 
 
 
-        SAPbobsCOM.Documents origDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
-
-        if (origDoc.GetByKey(docEntry) == false)
-            throw new Exception("Não foi possível obter o documento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
-
-
-        SAPbobsCOM.Documents sapDoc = origDoc.CreateCancellationDocument();
-
-        if (sapDoc == null)
-            throw new Exception("Este documento não pode ser cancelado: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+        SAPbobsCOM.Documents origDoc = null;
+        SAPbobsCOM.Documents sapDoc = null;
 
 
         try
         {
-            this.company.StartTransaction();
 
-            if (sapDoc.Add() != 0)
+            origDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
+            if (origDoc.GetByKey(docEntry) == false)
+                throw new Exception("Não foi possível obter o documento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+            if ("17,23, 22".Contains(objCode))
             {
-                var ex = new Exception("Não foi possível cancelar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
-                throw ex;
-            }
+                // Cotações e encomendas de cleintes e de fornecedores não usam documento de cancelamento                
+                this.company.StartTransaction();
 
-            AddDocResult result = new AddDocResult();
+                if (origDoc.Cancel() != 0)
+                {
+                    var ex = new Exception("Não foi possível cancelar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    throw ex;
+                }
 
-            this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+                AddDocResult result = new AddDocResult();
 
-            result.DocEntry = sapDoc.DocEntry;
-            result.DocNum = sapDoc.DocNum;
+                this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
 
-            result.DocTotal = sapDoc.DocTotal;
-            result.DiscountPercent = sapDoc.DiscountPercent;
-            result.TotalDiscount = sapDoc.TotalDiscount;
-            result.VatSum = sapDoc.VatSum;
-            result.RoundingDiffAmount = sapDoc.RoundingDiffAmount;
-            return result;
+                result.DocEntry = origDoc.DocEntry;
+                result.DocNum = origDoc.DocNum;
+
+                result.DocTotal = origDoc.DocTotal;
+                result.DiscountPercent = origDoc.DiscountPercent;
+                result.TotalDiscount = origDoc.TotalDiscount;
+                result.VatSum = origDoc.VatSum;
+                result.RoundingDiffAmount = origDoc.RoundingDiffAmount;
+                return result;
+            } else
+            {
+                // Gerar documento de cancelamento
+                sapDoc = origDoc.CreateCancellationDocument();
+
+                if (sapDoc == null)
+                    throw new Exception("Este documento não pode ser cancelado: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                this.company.StartTransaction();
+
+                if (sapDoc.Add() != 0)
+                {
+                    var ex = new Exception("Não foi possível cancelar em SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    throw ex;
+                }
+
+                AddDocResult result = new AddDocResult();
+
+                this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+
+                result.DocEntry = sapDoc.DocEntry;
+                result.DocNum = sapDoc.DocNum;
+
+                result.DocTotal = sapDoc.DocTotal;
+                result.DiscountPercent = sapDoc.DiscountPercent;
+                result.TotalDiscount = sapDoc.TotalDiscount;
+                result.VatSum = sapDoc.VatSum;
+                result.RoundingDiffAmount = sapDoc.RoundingDiffAmount;
+                return result;
+            }    
         }
         finally
         {
@@ -959,12 +1082,12 @@ class SBOContext : IDisposable
             var ai = s.GetAdminInfo();
             priceDecimals = ai.PriceAccuracy;
         }
-        
+
         SAPbobsCOM.Documents sapDoc = (SAPbobsCOM.Documents)this.company.GetBusinessObject((SAPbobsCOM.BoObjectTypes)objType);
 
         if (sapDoc.GetByKey(docEntry) == false)
             throw new Exception("Não foi possível obter o documento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
-        
+
         try
         {
             this.company.StartTransaction();
@@ -1062,7 +1185,7 @@ class SBOContext : IDisposable
         }
 
     }
-    
+
     internal AddDocResult FECHAR_ADIANTAMENTO_PARA_DESPESAS(PostFecharAdiantamentoInput data)
     {
 
@@ -1136,7 +1259,7 @@ class SBOContext : IDisposable
         }
 
     }
-    
+
     internal AddDocResult ADD_DESPESA(PostDespesaInput data)
     {
         double totalFactura = 0;
