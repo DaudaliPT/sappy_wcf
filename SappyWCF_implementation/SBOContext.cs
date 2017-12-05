@@ -122,7 +122,8 @@ class SBOContext : IDisposable
         sqlDetail += "\n ORDER BY T1.LINENUM";
 
         var sqlDetailNET = "SELECT T1.ITEMCODE, T1.WHSCODE, SUM(T1.QTSTK) AS QTSTK";
-        sqlDetailNET += "\n , SUM(T1.LINETOTAL + COALESCE(CASE WHEN T1.BONUS_NAP=1 THEN T1.LINETOTALBONUS ELSE 0 END,0) ) AS TRANSCOST";
+        //O LINETOTAL2 contem iec, ecovalor e ecoree
+        sqlDetailNET += "\n , SUM(T1.LINETOTAL2 + COALESCE(CASE WHEN T1.BONUS_NAP=1 THEN T1.LINETOTALBONUS ELSE 0 END,0) ) AS TRANSCOST";
         sqlDetailNET += "\n , SUM(T1.NETTOTAL+ COALESCE(CASE WHEN T1.BONUS_NAP=1 THEN T1.NETTOTALBONUS ELSE 0 END,0) ) AS TRANSCOSTNET";
         sqlDetailNET += "\n , OITW.\"OnHand\"";
         sqlDetailNET += "\n , OITW.\"AvgPrice\"";
@@ -227,7 +228,12 @@ class SBOContext : IDisposable
                     newDoc.Lines.Factor1 = QTCX;   // Num caixas/pack
                     newDoc.Lines.Factor2 = QTPK;   // Qdd por Caixa/pack 
                     //newDoc.Lines.InventoryQuantity = (double)(decimal)line["QTSTK"]; //Definir sobrepoe os fatores 1 e 2
-                    newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"];
+                    newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"]
+                    + ((double)(decimal)line["IEC"]
+                    + (double)(decimal)line["ECOVALOR"]
+                    + (double)(decimal)line["ECOREE"])/ QTSTK;
+
+
                     newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
                     newDoc.Lines.VatGroup = (string)line["VATGROUP"];
                     //  newDoc.Lines.TaxCode = (string)line["VATGROUP"];  //Pelos testes que fiz e pela documentação o TaxCode liga á tabela OSTC e não é o que interessa
@@ -247,7 +253,15 @@ class SBOContext : IDisposable
                     newDoc.Lines.UserFields.Fields.Item("U_apyUDISC").Value = (string)line["USER_DISC"];
                     newDoc.Lines.UserFields.Fields.Item("U_apyIDPROMO").Value = (int)line["IDPROMO"];
 
-                    newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyUIEC").Value = (string)line["UIEC"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyUECOVALOR").Value = (string)line["UECOVALOR"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyUECOREE").Value = (string)line["UECOREE"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyIEC").Value = (double)(decimal)line["IEC"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyECOVALOR").Value = (double)(decimal)line["ECOVALOR"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyECOREE").Value = (double)(decimal)line["ECOREE"];
+
+                    //newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
+                    newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL2"]; //includes IEC, ECOVALOR, ECOREE
 
                     if ((int)line["BASE_DOCENTRY"] != 0)
                     {
@@ -257,7 +271,7 @@ class SBOContext : IDisposable
                         double QTYSTK_AVAILABLE_SAP = (double)(decimal)line["QTYSTK_AVAILABLE_SAP"];
                         if (QTSTK > QTYSTK_AVAILABLE_SAP) throw new Exception("Não pode relacionar mais que " + QTYSTK_AVAILABLE_SAP + " UN do artigo " + (string)line["ITEMNAME"] + " com o documento base.");
 
-                        if ((string)line["BASE_DOCSTATUS"] != "O")
+                        if ((string)line["BASE_DOCSTATUS"] != "O" || objCode == "14")
                         {
                             // fazer uma referência indirecta
                             newDoc.Lines.UserFields.Fields.Item("U_apyBSTYPE").Value = (int)line["BASE_OBJTYPE"];
@@ -707,6 +721,12 @@ class SBOContext : IDisposable
             // if (TAXDATE.Year > 1900) newDoc.TaxDate = TAXDATE;
             // if (DOCDUEDATE.Year > 1900) newDoc.DocDueDate = DOCDUEDATE;
 
+            if (objType == 17)
+            {
+                // A Data de entrega é obrigatória
+                newDoc.DocDueDate = DateTime.Now;
+            }
+
             newDoc.CardCode = (string)header["CARDCODE"];
             if ((string)header["SHIPADDR"] != "") newDoc.ShipToCode = (string)header["SHIPADDR"];
             if ((string)header["BILLADDR"] != "") newDoc.PayToCode = (string)header["BILLADDR"];
@@ -780,7 +800,7 @@ class SBOContext : IDisposable
                         double QTYSTK_AVAILABLE_SAP = (double)(decimal)line["QTYSTK_AVAILABLE_SAP"];
                         if (QTSTK > QTYSTK_AVAILABLE_SAP) throw new Exception("Não pode relacionar mais que " + QTYSTK_AVAILABLE_SAP + " UN do artigo " + ITEMNAME + " com o documento base.");
 
-                        if ((string)line["BASE_DOCSTATUS"] != "O")
+                        if ((string)line["BASE_DOCSTATUS"] != "O" || objCode == "14")
                         {
                             // fazer uma referência indirecta
                             newDoc.Lines.UserFields.Fields.Item("U_apyBSTYPE").Value = (int)line["BASE_OBJTYPE"];
@@ -1028,7 +1048,8 @@ class SBOContext : IDisposable
                 result.VatSum = origDoc.VatSum;
                 result.RoundingDiffAmount = origDoc.RoundingDiffAmount;
                 return result;
-            } else
+            }
+            else
             {
                 // Gerar documento de cancelamento
                 sapDoc = origDoc.CreateCancellationDocument();
@@ -1057,7 +1078,7 @@ class SBOContext : IDisposable
                 result.VatSum = sapDoc.VatSum;
                 result.RoundingDiffAmount = sapDoc.RoundingDiffAmount;
                 return result;
-            }    
+            }
         }
         finally
         {
