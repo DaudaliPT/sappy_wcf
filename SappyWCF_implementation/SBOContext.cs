@@ -190,6 +190,30 @@ class SBOContext : IDisposable
             if ((string)header["COMMENTS"] != "") newDoc.Comments = (string)header["COMMENTS"];
             if ((int)header["CntctCode"] != 0) newDoc.ContactPersonCode = (int)header["CntctCode"];
 
+            if ("15,16,21".IndexOf(objCode) > -1)
+            {
+                if ((string)header["ATDOCTYPE"] != "") { newDoc.ATDocumentType = (string)header["ATDOCTYPE"]; }
+                else
+                {
+                    if (objCode == "15") newDoc.ATDocumentType = "GR"; //Entrega a cliente
+                    if (objCode == "16") newDoc.ATDocumentType = "GT"; //Devolução de cliente
+                    if (objCode == "21") newDoc.ATDocumentType = "GD"; //Devolução a fornecedor
+                }
+                if ((string)header["MATRICULA"] != "") newDoc.VehiclePlate = (string)header["MATRICULA"];
+                if ((string)header["ATAUTHCODE"] != "")
+                {
+                    newDoc.AuthorizationCode = (string)header["ATAUTHCODE"];
+                    newDoc.ElecCommStatus = SAPbobsCOM.ElecCommStatusEnum.ecsApproved;
+                }
+                newDoc.StartDeliveryDate = DateTime.Now.AddMinutes(5);
+                newDoc.StartDeliveryTime = DateTime.Now.AddMinutes(5);
+            }
+
+            if ((string)header["MATRICULA"] != "")
+            {
+                newDoc.UserFields.Fields.Item("U_apyMATRICULA").Value = (string)header["MATRICULA"];
+            }
+
             newDoc.UserFields.Fields.Item("U_apyUSER").Value = (string)header["CREATED_BY_NAME"];
             newDoc.UserFields.Fields.Item("U_apyINCONF").Value = (short)header["HASINCONF"] == 1 ? "Y" : "N";
 
@@ -231,7 +255,7 @@ class SBOContext : IDisposable
                     newDoc.Lines.UnitPrice = (double)(decimal)line["PRICE"]
                     + ((double)(decimal)line["IEC"]
                     + (double)(decimal)line["ECOVALOR"]
-                    + (double)(decimal)line["ECOREE"])/ QTSTK;
+                    + (double)(decimal)line["ECOREE"]) / QTSTK;
 
 
                     newDoc.Lines.WarehouseCode = (string)line["WHSCODE"];
@@ -948,6 +972,24 @@ class SBOContext : IDisposable
                 if (field == "DOCDUEDATE") sapDoc.DocDueDate = DateTime.ParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
                 if (field == "COMMENTS") sapDoc.Comments = value;
                 if (field == "HASINCONF") sapDoc.UserFields.Fields.Item("U_apyINCONF").Value = (value != "" && "true,1".Contains(value.ToLower()) ? "Y" : "N");
+
+
+                if (field == "MATRICULA") sapDoc.UserFields.Fields.Item("U_apyMATRICULA").Value = value;
+
+                if ("15,16,21".IndexOf(objCode) > -1)
+                {
+                    if (field == "ATDOCTYPE") sapDoc.ATDocumentType = value;
+                    if (field == "MATRICULA") sapDoc.VehiclePlate = value;
+                    if (field == "ATAUTHCODE") sapDoc.AuthorizationCode = value;
+                    if (field == "ATTRYAGAIN" && value == "1")
+                    {
+                        sapDoc.StartDeliveryDate = DateTime.Now.AddMinutes(5);
+                        sapDoc.StartDeliveryTime = DateTime.Now.AddMinutes(5);
+
+                        sapDoc.ElecCommStatus = SAPbobsCOM.ElecCommStatusEnum.ecsPendingApproval;
+                    }
+                }
+
             }
 
 
