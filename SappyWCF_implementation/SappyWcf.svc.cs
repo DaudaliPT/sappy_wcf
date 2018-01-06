@@ -350,9 +350,7 @@ public class SappyWcf : I_SappyWcf
         return Logger.FormatToJson(result);
 
     }
-
-
-
+    
     public string PatchDoc(string empresa, string objCode, string docEntry)
     {
         Result result = new Result();
@@ -535,6 +533,80 @@ public class SappyWcf : I_SappyWcf
         return Logger.FormatToJson(result);
     }
 
+    public string PostPagamento(PostPaymentInput body, string empresa)
+    {
+        Result result = new Result();
+        string sInfo = "PostPagamento";
+        Logger.LogInvoke(sInfo, empresa, body);
+
+        if (!SBOHandler.DIAPIConnections.ContainsKey(empresa))
+            result.error = "Empresa não configurada ou inexistente.";
+        else
+        {
+            var sboCon = SBOHandler.DIAPIConnections[empresa];
+
+            if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
+            {
+                try
+                {
+                    result.result = sboCon.ADD_APGAMENTO_FORNECEDOR(body);
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.Log.Error(ex.Message, ex);
+                    result.error = ex.Message;
+                }
+                finally
+                {
+                    Monitor.Exit(sboCon);
+                }
+            }
+            else
+            {
+                result.error = "Busy, please try again later...";
+            }
+        }
+        Logger.LogResult(sInfo, result);
+        return Logger.FormatToJson(result);
+    }
+    public string PostCancelarPagamento(PostCancelarPagamentoInput body, string empresa) 
+    {
+        Result result = new Result();
+        string sInfo = "PostCancelarPagamento";
+        Logger.LogInvoke(sInfo, empresa);
+
+        if (!SBOHandler.DIAPIConnections.ContainsKey(empresa))
+            result.error = "Empresa não configurada ou inexistente.";
+
+        else
+        {
+            var sboCon = SBOHandler.DIAPIConnections[empresa];
+
+            if (Monitor.TryEnter(sboCon, new TimeSpan(0, 0, 10)))
+            {
+                try
+                {
+                    result.result = sboCon.CANCELAR_PAGAMENTO(body);
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.Log.Error(ex.Message, ex);
+                    result.error = ex.Message;
+                }
+                finally
+                {
+                    Monitor.Exit(sboCon);
+                }
+            }
+            else
+            {
+                result.error = "Busy, please try again later...";
+            }
+        }
+
+        Logger.LogResult(sInfo, result);
+        return Logger.FormatToJson(result);
+    }
     public string PostFecharAdiantamento(PostFecharAdiantamentoInput body, string empresa)
     {
         Result result = new Result();

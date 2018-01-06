@@ -189,6 +189,7 @@ class SBOContext : IDisposable
             if ((string)header["NUMATCARD"] != "") newDoc.NumAtCard = (string)header["NUMATCARD"];
             if ((string)header["COMMENTS"] != "") newDoc.Comments = (string)header["COMMENTS"];
             if ((int)header["CntctCode"] != 0) newDoc.ContactPersonCode = (int)header["CntctCode"];
+            newDoc.UserFields.Fields.Item("U_apyCONTRATO").Value = (int)header["CONTRATO"];
 
             if ("15,16,21".IndexOf(objCode) > -1)
             {
@@ -1239,6 +1240,383 @@ class SBOContext : IDisposable
 
             result.DocEntry = sapDoc.DocEntry;
             result.DocNum = sapDoc.DocNum;
+
+            return result;
+        }
+        finally
+        {
+            if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+        }
+
+    }
+
+    internal AddPagResult ADD_APGAMENTO_FORNECEDOR(PostPaymentInput data)
+    {
+        bool addDebito = false;
+        bool addEC = false;
+        double valorECC = 0;
+        double valorECF = 0;
+
+        // Encontro de contas - CLIENTE
+        SAPbobsCOM.Payments ECC = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oIncomingPayments);
+        ECC.DocType = SAPbobsCOM.BoRcptTypes.rCustomer;
+        ECC.CardCode = data.CardCodeEC;
+        ECC.Remarks = "EC PAG";
+
+        foreach (var doc in data.PaymentInvoices)
+        {
+            if (doc.ValorECC != 0)
+            {
+                addEC = true;
+                if (ECC.Invoices.SumApplied != 0) ECC.Invoices.Add();
+                if (doc.DocEntry != null) ECC.Invoices.DocEntry = (int)doc.DocEntry;
+                if (doc.DocLine != null) ECC.Invoices.DocLine = (int)doc.DocLine;
+                ECC.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)(Convert.ToInt32(doc.InvoiceType));
+                ECC.Invoices.SumApplied = (double)doc.ValorECC;
+                //ECC.Invoices.TotalDiscount = (double)doc.ValorDescontoECC; // NÃO HÁ DECONTOS EM ENC CONTAS NO CLIENTE
+                if (doc.U_apyCONTRATO != null) ECC.Invoices.UserFields.Fields.Item("U_apyCONTRATO").Value = (int)doc.U_apyCONTRATO;
+                ECC.Invoices.UserFields.Fields.Item("U_apyUDISC").Value = doc.U_apyUDISC;
+                ECC.Invoices.UserFields.Fields.Item("U_apyUDEBITO").Value = doc.U_apyUDEBITO;
+
+                valorECC += ECC.Invoices.SumApplied;
+            }
+        }
+        ECC.TransferAccount = data.TransferAccountEC;
+        ECC.TransferReference = "EC";
+        ECC.TransferSum = valorECC;
+
+        // Encontro de contas - FORNECEDOR
+        SAPbobsCOM.Payments ECF = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oVendorPayments);
+        ECF.DocType = SAPbobsCOM.BoRcptTypes.rSupplier;
+        ECF.CardCode = data.CardCode;
+        ECF.Remarks = "EC PAG";
+
+        foreach (var doc in data.PaymentInvoices)
+        {
+            if (doc.ValorECF != 0)
+            {
+                if (ECF.Invoices.SumApplied != 0) ECF.Invoices.Add();
+                if (doc.DocEntry != null) ECF.Invoices.DocEntry = (int)doc.DocEntry;
+                if (doc.DocLine != null) ECF.Invoices.DocLine = (int)doc.DocLine;
+                ECF.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)(Convert.ToInt32(doc.InvoiceType));
+                ECF.Invoices.SumApplied = (double)doc.ValorECF;
+                ECF.Invoices.TotalDiscount = (double)doc.ValorDescontoECF;
+                if (doc.U_apyCONTRATO != null) ECF.Invoices.UserFields.Fields.Item("U_apyCONTRATO").Value = (int)doc.U_apyCONTRATO;
+                ECF.Invoices.UserFields.Fields.Item("U_apyUDISC").Value = doc.U_apyUDISC;
+                ECF.Invoices.UserFields.Fields.Item("U_apyUDEBITO").Value = doc.U_apyUDEBITO;
+
+                valorECF += ECF.Invoices.SumApplied;
+            }
+        }
+        ECF.TransferAccount = data.TransferAccountEC;
+        ECF.TransferReference = "EC";
+        ECF.TransferSum = valorECF;
+
+        if ((decimal)valorECC != (decimal)valorECF)
+        {
+            var ex = new Exception("Valor de encontro de contas não bate certo entre o cliente e o fornecedor.");
+            throw ex;
+        }
+
+        // Pagamento ao FORNECEDOR
+        SAPbobsCOM.Payments sapDoc = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oVendorPayments);
+
+        sapDoc.DocType = SAPbobsCOM.BoRcptTypes.rSupplier;
+        sapDoc.CardCode = data.CardCode;
+        sapDoc.Remarks = data.Remarks;
+
+        sapDoc.CashAccount = data.CashAccount;
+        sapDoc.CashSum = (double)data.CashSum;
+
+        sapDoc.TransferAccount = data.TransferAccount;
+        sapDoc.TransferSum = (double)data.TransferSum;
+        sapDoc.TransferReference = data.TransferReference;
+
+
+        sapDoc.CheckAccount = data.CheckAccount;
+        foreach (var ch in data.PaymentChecks)
+        {
+            if (sapDoc.Checks.CheckSum != 0) sapDoc.Checks.Add();
+            sapDoc.Checks.AccounttNum = ch.AccounttNum;
+            sapDoc.Checks.BankCode = ch.BankCode;
+            sapDoc.Checks.CheckAccount = ch.CheckAccount;
+            sapDoc.Checks.CheckNumber = ch.CheckNumber;
+            sapDoc.Checks.CheckSum = (float)ch.CheckSum;
+            sapDoc.Checks.CountryCode = ch.CountryCode;
+            sapDoc.Checks.DueDate = DateTime.ParseExact(ch.DueDate, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            sapDoc.Checks.ManualCheck = SAPbobsCOM.BoYesNoEnum.tYES;
+        }
+
+        sapDoc.UserFields.Fields.Item("U_apyNotas5").Value = data.U_apyNotas5;
+        sapDoc.UserFields.Fields.Item("U_apyNotas10").Value = data.U_apyNotas10;
+        sapDoc.UserFields.Fields.Item("U_apyNotas20").Value = data.U_apyNotas20;
+        sapDoc.UserFields.Fields.Item("U_apyNotas50").Value = data.U_apyNotas50;
+        sapDoc.UserFields.Fields.Item("U_apyNotas100").Value = data.U_apyNotas100;
+        sapDoc.UserFields.Fields.Item("U_apyNotas200").Value = data.U_apyNotas200;
+        sapDoc.UserFields.Fields.Item("U_apyNotas500").Value = data.U_apyNotas500;
+        sapDoc.UserFields.Fields.Item("U_apyNotas").Value = (float)data.U_apyNotas;
+        sapDoc.UserFields.Fields.Item("U_apyMoedas").Value = (float)data.U_apyMoedas;
+        sapDoc.UserFields.Fields.Item("U_apyVales").Value = (float)data.U_apyVales;
+        sapDoc.UserFields.Fields.Item("U_apyTickets").Value = (float)data.U_apyTickets;
+        sapDoc.UserFields.Fields.Item("U_apyTroco").Value = (float)data.U_apyTroco;
+
+        foreach (var doc in data.PaymentInvoices)
+        {
+            if (doc.ValorDeduzir != 0)
+            {
+                if (sapDoc.Invoices.SumApplied != 0) sapDoc.Invoices.Add();
+                if (doc.DocEntry != null) sapDoc.Invoices.DocEntry = (int)doc.DocEntry;
+                if (doc.DocLine != null) sapDoc.Invoices.DocLine = (int)doc.DocLine;
+                sapDoc.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)(Convert.ToInt32(doc.InvoiceType));
+                sapDoc.Invoices.SumApplied = -1*(double)doc.ValorDeduzir;
+                //sapDoc.Invoices.TotalDiscount = (double)doc.ValorDescontoDeduzir; 'Não há desconto nos documentos a deduzir
+                if (doc.U_apyCONTRATO != null) sapDoc.Invoices.UserFields.Fields.Item("U_apyCONTRATO").Value = (int)doc.U_apyCONTRATO;
+                sapDoc.Invoices.UserFields.Fields.Item("U_apyUDISC").Value = doc.U_apyUDISC;
+                sapDoc.Invoices.UserFields.Fields.Item("U_apyUDEBITO").Value = doc.U_apyUDEBITO;
+            }
+        }
+
+        foreach (var doc in data.PaymentInvoices)
+        {
+            if (doc.ValorPagar != 0)
+            {
+                if (sapDoc.Invoices.SumApplied != 0) sapDoc.Invoices.Add();
+                if (doc.DocEntry != null) sapDoc.Invoices.DocEntry = (int)doc.DocEntry;
+                if (doc.DocLine != null) sapDoc.Invoices.DocLine = (int)doc.DocLine;
+                sapDoc.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)(Convert.ToInt32(doc.InvoiceType));
+                sapDoc.Invoices.SumApplied = (double)doc.ValorPagar;
+                sapDoc.Invoices.TotalDiscount = (double)doc.ValorDescontoPagar;
+                if (doc.U_apyCONTRATO != null) sapDoc.Invoices.UserFields.Fields.Item("U_apyCONTRATO").Value = (int)doc.U_apyCONTRATO;
+                sapDoc.Invoices.UserFields.Fields.Item("U_apyUDISC").Value = doc.U_apyUDISC;
+                sapDoc.Invoices.UserFields.Fields.Item("U_apyUDEBITO").Value = doc.U_apyUDEBITO;
+            }
+        }
+
+        // fatura com débito a CLENTE (assoicado ao fornecedor)
+        SAPbobsCOM.Documents ftDebito = (SAPbobsCOM.Documents)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oInvoices);
+        ftDebito.CardCode = data.CodigoClienteDebito;
+        ftDebito.Series = (int)data.SerieDebitos;
+        foreach (var doc in data.PaymentInvoices)
+        {
+            if (doc.ValorDebito != 0)
+            {
+                addDebito = true;
+                if (ftDebito.Lines.ItemCode != "") ftDebito.Lines.Add();
+                ftDebito.Lines.ItemCode = data.ArtigoDebitos;
+                ftDebito.Lines.Quantity = 1;
+                ftDebito.Lines.UnitPrice = (float)doc.ValorDebito;
+                if (doc.InvoiceType == "18")
+                    ftDebito.Lines.ItemDescription = doc.CONTRATO_DESC + " (Ref v/FT " + doc.Ref2 + ")";
+                else
+                    ftDebito.Lines.ItemDescription = doc.CONTRATO_DESC + " (Ref v/doc " + doc.Ref2 + ")";
+            }
+        }
+
+        try
+        {
+            AddPagResult result = new AddPagResult();
+            this.company.StartTransaction();
+
+            if (addEC) { 
+
+                if (ECC.Add() != 0)
+                {
+                    var ex = new Exception("Não foi possível gravar em SAP1: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                    //log the xml to allow easier debug
+                    var xml = sapDoc.GetAsXML();
+                    Logger.Log.Debug(xml, ex);
+
+                    throw ex;
+                }
+                else
+                {
+                    int docEntry = 0;
+                    int.TryParse(this.company.GetNewObjectKey(), out docEntry);
+
+                    if (ECC.GetByKey(docEntry) == false)
+                    {
+                        throw new Exception("Não foi obter o documento criado em SAP1: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    }
+                    sapDoc.UserFields.Fields.Item("U_apyECC").Value = docEntry;
+                }
+
+                if (ECF.Add() != 0)
+                {
+                    var ex = new Exception("Não foi possível gravar em SAP2: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                    //log the xml to allow easier debug
+                    var xml = sapDoc.GetAsXML();
+                    Logger.Log.Debug(xml, ex);
+
+                    throw ex;
+                }
+                else
+                {
+                    int docEntry = 0;
+                    int.TryParse(this.company.GetNewObjectKey(), out docEntry);
+
+                    if (ECF.GetByKey(docEntry) == false)
+                    {
+                        throw new Exception("Não foi obter o documento criado em SAP2: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    }
+                    sapDoc.UserFields.Fields.Item("U_apyECF").Value = docEntry;
+                }
+
+            }
+
+            if (addDebito)
+            {
+                if (ftDebito.Add() != 0)
+                {
+                    var ex = new Exception("Não foi possível gravar em SAP3: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                    //log the xml to allow easier debug
+                    var xml = sapDoc.GetAsXML();
+                    Logger.Log.Debug(xml, ex);
+
+                    throw ex;
+                }
+                else
+                {
+                    int docEntry = 0;
+                    int.TryParse(this.company.GetNewObjectKey(), out docEntry);
+
+                    if (ftDebito.GetByKey(docEntry) == false)
+                    {
+                        throw new Exception("Não foi obter o documento criado em SAP3: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    }
+                    sapDoc.UserFields.Fields.Item("U_apyFTDEBITO").Value = docEntry;
+                }
+                result.FtDebitoDocEntry = ftDebito.DocEntry;
+                result.FtDebitoDocNum = ftDebito.DocNum;
+
+            }
+
+            if (sapDoc.Add() != 0)
+            {
+                var ex = new Exception("Não foi possível gravar em SAP4: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+                //log the xml to allow easier debug
+                var xml = sapDoc.GetAsXML();
+                Logger.Log.Debug(xml, ex);
+
+                throw ex;
+            }
+            else
+            {
+                int docEntry = 0;
+                int.TryParse(this.company.GetNewObjectKey(), out docEntry);
+
+                if (sapDoc.GetByKey(docEntry) == false)
+                {
+                    throw new Exception("Não foi obter o documento atualizado em SAP4: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                }
+                result.PagDocEntry = sapDoc.DocEntry;
+            }
+             
+
+            this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+              
+            return result;
+        }
+        finally
+        {
+            if (this.company.InTransaction) this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+        }
+    }
+
+    internal AddDocResult CANCELAR_PAGAMENTO(PostCancelarPagamentoInput data)
+    {
+
+        SAPbobsCOM.Payments pagamento = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oVendorPayments);
+        SAPbobsCOM.Payments pagamentoEC = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oVendorPayments);
+        SAPbobsCOM.Payments recebimentoEC = (SAPbobsCOM.Payments)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oIncomingPayments);
+        SAPbobsCOM.Documents ftDebito = (SAPbobsCOM.Documents)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oInvoices);
+        SAPbobsCOM.Documents ftDebitoCancel = (SAPbobsCOM.Documents)this.company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oInvoices);
+
+        if (pagamento.GetByKey(data.DocEntry) == false)
+            throw new Exception("Não foi obter o pagamento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+
+        int? U_apyECC = pagamento.UserFields.Fields.Item("U_apyECC").Value;
+        int? U_apyECF = pagamento.UserFields.Fields.Item("U_apyECF").Value;
+        int? U_apyFTDEBITO = pagamento.UserFields.Fields.Item("U_apyFTDEBITO").Value;
+
+        if (U_apyECC > 0)
+        {
+            if (recebimentoEC.GetByKey((int)U_apyECC) == false)
+                throw new Exception("Não foi obter o recebimento EC do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+        }
+        if (U_apyECF > 0)
+        {
+            if (pagamentoEC.GetByKey((int)U_apyECF) == false)
+                throw new Exception("Não foi obter o pagamento EC do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+        }
+
+        if (U_apyFTDEBITO > 0)
+        {
+            if (ftDebito.GetByKey((int)U_apyFTDEBITO) == false)
+                throw new Exception("Não foi obter a fatura de débito do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+
+            ftDebitoCancel = ftDebito.CreateCancellationDocument();
+        }
+
+        try
+        {
+            this.company.StartTransaction();
+
+            pagamento.Remarks = "Cancelado-" + data.Reason;
+            if (pagamento.Update() != 0)
+            {
+                var ex = new Exception("Colocar razão de cancelamento no pagamento: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                throw ex;
+            }
+
+            if (pagamento.GetByKey(data.DocEntry) == false)
+                throw new Exception("Não foi obter o pagamento do SAP: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+            
+            if (pagamento.Cancel() != 0)
+            {
+                var ex = new Exception("Cancelar pagamento: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                throw ex;
+            }
+
+
+
+
+            if (U_apyECC > 0)
+            {
+                if (recebimentoEC.Cancel() != 0)
+                {
+                    var ex = new Exception("Cancelar recebimento EC: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    throw ex;
+                }
+            }
+
+            if (U_apyECF > 0)
+            {
+                if (pagamentoEC.Cancel() != 0)
+                {
+                    var ex = new Exception("Cancelar pagamento EC: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    throw ex;
+                }
+            }
+
+            if (U_apyFTDEBITO > 0)
+            {
+                if (ftDebitoCancel.Add() != 0)
+                {
+                    var ex = new Exception("Cancelar fatura débito EC: " + this.company.GetLastErrorCode() + " - " + this.company.GetLastErrorDescription());
+                    throw ex;
+                }
+            }
+
+
+            AddDocResult result = new AddDocResult();
+
+            this.company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+
 
             return result;
         }

@@ -71,6 +71,14 @@ public interface I_SappyWcf
     string PostAdiantamento(PostAdiantamentoInput body, string empresa);
 
     [OperationContract]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/pagamento", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
+    string PostPagamento(PostPaymentInput body, string empresa);
+
+    [OperationContract]
+    [WebInvoke(Method = "POST", UriTemplate = "{empresa}/cancelarpagamento", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
+    string PostCancelarPagamento(PostCancelarPagamentoInput body, string empresa);
+
+    [OperationContract]
     [WebInvoke(Method = "POST", UriTemplate = "{empresa}/fecharadiantamento", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
     string PostFecharAdiantamento(PostFecharAdiantamentoInput body, string empresa);
 

@@ -87,7 +87,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AddPagResult.cs" />
     <Compile Include="AddDocResult.cs" />
+    <Compile Include="PostCancelarPagamentoInput.cs" />
+    <Compile Include="PostPaymentInput.cs" />
     <Compile Include="PostFecharAdiantamentoInput.cs" />
     <Compile Include="PostDespesaInput.cs" />
     <Compile Include="PostAdiantamentoInput.cs" />
