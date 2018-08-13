@@ -218,6 +218,10 @@ class SBOContext : IDisposable
             newDoc.UserFields.Fields.Item("U_apyUSER").Value = (string)header["CREATED_BY_NAME"];
             newDoc.UserFields.Fields.Item("U_apyINCONF").Value = (short)header["HASINCONF"] == 1 ? "Y" : "N";
 
+            if ((int)header["UNAPOR_BASEENTRY"] != 0)
+            {
+                newDoc.UserFields.Fields.Item("U_apyUNAPORENTRY").Value = (int)header["UNAPOR_BASEENTRY"];
+            }
 
 
             //// preform checks by item total
@@ -285,6 +289,10 @@ class SBOContext : IDisposable
                     newDoc.Lines.UserFields.Fields.Item("U_apyECOVALOR").Value = (double)(decimal)line["ECOVALOR"];
                     newDoc.Lines.UserFields.Fields.Item("U_apyECOREE").Value = (double)(decimal)line["ECOREE"];
 
+                    if ((int)header["UNAPOR_BASEENTRY"] != 0)
+                    {
+                        newDoc.Lines.UserFields.Fields.Item("U_apyUNAPORLINE").Value = (int)line["UNAPOR_LINENUM"];
+                    }
                     //newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
                     newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL2"]; //includes IEC, ECOVALOR, ECOREE
 
@@ -1367,6 +1375,8 @@ class SBOContext : IDisposable
                 if (sapDoc.Invoices.SumApplied != 0) sapDoc.Invoices.Add();
                 if (doc.DocEntry != null) sapDoc.Invoices.DocEntry = (int)doc.DocEntry;
                 if (doc.DocLine != null) sapDoc.Invoices.DocLine = (int)doc.DocLine;
+
+              
                 sapDoc.Invoices.InvoiceType = (SAPbobsCOM.BoRcptInvTypes)(Convert.ToInt32(doc.InvoiceType));
                 sapDoc.Invoices.SumApplied = -1*(double)doc.ValorDeduzir;
                 //sapDoc.Invoices.TotalDiscount = (double)doc.ValorDescontoDeduzir; 'Não há desconto nos documentos a deduzir
