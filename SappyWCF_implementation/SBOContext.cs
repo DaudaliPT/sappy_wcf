@@ -293,6 +293,14 @@ class SBOContext : IDisposable
                     {
                         newDoc.Lines.UserFields.Fields.Item("U_apyUNAPORLINE").Value = (int)line["UNAPOR_LINENUM"];
                     }
+
+                    if ((int)line["OFID"] != 0)
+                    {
+                        newDoc.Lines.UserFields.Fields.Item("U_apyOFID").Value = (int)line["OFID"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyOFLINENUM").Value = (int)line["OFLINENUM"];
+                    }
+
+
                     //newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL"];
                     newDoc.Lines.LineTotal = (double)(decimal)line["LINETOTAL2"]; //includes IEC, ECOVALOR, ECOREE
 
@@ -824,6 +832,14 @@ class SBOContext : IDisposable
                     newDoc.Lines.UserFields.Fields.Item("U_apyIDPROMO").Value = (int)line["IDPROMO"];
                     if ((string)line["PRICE_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyPRICECHBY").Value = (string)line["PRICE_CHANGEDBY"];
                     if ((string)line["DISC_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyDISCCHBY").Value = (string)line["DISC_CHANGEDBY"];
+
+
+
+                    if ((int)line["OFID"] != 0)
+                    {
+                        newDoc.Lines.UserFields.Fields.Item("U_apyOFID").Value = (int)line["OFID"];
+                        newDoc.Lines.UserFields.Fields.Item("U_apyOFLINENUM").Value = (int)line["OFLINENUM"];
+                    }
 
                     if ((int)line["BASE_DOCENTRY"] != 0)
                     {
