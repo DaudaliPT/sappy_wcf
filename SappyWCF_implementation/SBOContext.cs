@@ -289,6 +289,9 @@ class SBOContext : IDisposable
                     newDoc.Lines.UserFields.Fields.Item("U_apyECOVALOR").Value = (double)(decimal)line["ECOVALOR"];
                     newDoc.Lines.UserFields.Fields.Item("U_apyECOREE").Value = (double)(decimal)line["ECOREE"];
 
+                    newDoc.Lines.UserFields.Fields.Item("U_apySUGPRICE").Value = (double)(decimal)line["SUG_PRICE"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyCASHPRICE").Value = (double)(decimal)line["CASH_PRICE"];
+
                     if ((int)header["UNAPOR_BASEENTRY"] != 0)
                     {
                         newDoc.Lines.UserFields.Fields.Item("U_apyUNAPORLINE").Value = (int)line["UNAPOR_LINENUM"];
@@ -833,13 +836,15 @@ class SBOContext : IDisposable
                     if ((string)line["PRICE_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyPRICECHBY").Value = (string)line["PRICE_CHANGEDBY"];
                     if ((string)line["DISC_CHANGEDBY"] != "") newDoc.Lines.UserFields.Fields.Item("U_apyDISCCHBY").Value = (string)line["DISC_CHANGEDBY"];
 
-
-
                     if ((int)line["OFID"] != 0)
                     {
                         newDoc.Lines.UserFields.Fields.Item("U_apyOFID").Value = (int)line["OFID"];
                         newDoc.Lines.UserFields.Fields.Item("U_apyOFLINENUM").Value = (int)line["OFLINENUM"];
                     }
+
+
+                    newDoc.Lines.UserFields.Fields.Item("U_apySUGPRICE").Value = (double)(decimal)line["SUG_PRICE"];
+                    newDoc.Lines.UserFields.Fields.Item("U_apyCASHPRICE").Value = (double)(decimal)line["CASH_PRICE"];
 
                     if ((int)line["BASE_DOCENTRY"] != 0)
                     {
